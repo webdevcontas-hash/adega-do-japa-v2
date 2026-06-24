@@ -14,6 +14,8 @@ import HeaderV2 from "@/components/v2/HeaderV2";
 import CategoryHubV2 from "@/components/v2/CategoryHubV2";
 import ProductCardV2 from "@/components/v2/ProductCardV2";
 import ProductDetailV2 from "@/components/v2/ProductDetailV2";
+import KitSection from "@/components/KitSection";
+import NarguilhBuilder from "@/components/NarguilhBuilder";
 import { useCart, type CheckoutResult } from "@/lib/useCart";
 
 const CATEGORY_HEADINGS: Record<string, string> = {
@@ -40,7 +42,8 @@ function StorefrontV2Content({ products }: { products: ProductModel[] }) {
   const [accountOpen, setAccountOpen] = useState(false);
   const [detailProduct, setDetailProduct] = useState<ProductModel | null>(null);
   const [payment, setPayment] = useState<CheckoutResult | null>(null);
-  const { cart, itemCount, addToCart, changeQuantity, clear, reorder } = useCart();
+  const [narguilhOpen, setNarguilhOpen] = useState(false);
+  const { cart, itemCount, addToCart, changeQuantity, clear, reorder, addManyToCart } = useCart();
   const { open } = useStoreStatus();
   const { session, profile } = useCustomer();
   const customerName = session?.name ?? profile?.name;
@@ -101,6 +104,28 @@ function StorefrontV2Content({ products }: { products: ProductModel[] }) {
 
         <div className="flex-1 pb-16">
           <CategoryHubV2 selectedCategory={selectedCategory} onSelectCategory={setSelectedCategory} />
+
+          {/* Kits para a ocasião */}
+          {!selectedCategory && !searchQuery && (
+            <KitSection onAddKit={(items) => { addManyToCart(items); setDrawerOpen(true); }} />
+          )}
+
+          {/* Botão Monta seu Narguilé */}
+          {(!selectedCategory || selectedCategory === "Tabacaria") && !searchQuery && (
+            <div className="mx-auto max-w-7xl px-4 pb-4 md:px-8">
+              <button
+                onClick={() => setNarguilhOpen(true)}
+                className="flex w-full items-center gap-3 rounded-2xl border-2 border-dashed border-slate-300 bg-white px-5 py-4 text-left transition hover:border-orange-300 hover:bg-orange-50"
+              >
+                <span className="text-3xl">💨</span>
+                <div>
+                  <p className="font-bold text-slate-800">Monta seu Narguilé</p>
+                  <p className="text-xs text-slate-400">Escolha essência, carvão e extras passo a passo.</p>
+                </div>
+                <span className="ml-auto text-orange-500 font-bold text-sm">→</span>
+              </button>
+            </div>
+          )}
 
           <main className="mx-auto max-w-7xl px-4 md:px-8">
             <div className="mb-6 flex items-center justify-between">
@@ -188,6 +213,14 @@ function StorefrontV2Content({ products }: { products: ProductModel[] }) {
         onClose={() => setAccountOpen(false)}
         onReorder={handleReorder}
       />
+
+      {narguilhOpen && (
+        <NarguilhBuilder
+          products={products}
+          onAddToCart={(items) => { addManyToCart(items); setNarguilhOpen(false); setDrawerOpen(true); }}
+          onClose={() => setNarguilhOpen(false)}
+        />
+      )}
 
       {detailProduct && (
         <ProductDetailV2

@@ -44,11 +44,103 @@ const products = [
 ];
 
 async function main() {
+  // Produtos
   await prisma.product.deleteMany();
   for (const product of products) {
     await prisma.product.create({ data: product });
   }
   console.log(`${products.length} produtos cadastrados.`);
+
+  // Busca IDs dos produtos criados para os kits
+  const created = await prisma.product.findMany({ select: { id: true, name: true } });
+  const find = (keyword: string) => created.find((p) => p.name.includes(keyword))?.id;
+
+  // Setting padrão
+  await prisma.setting.upsert({
+    where: { key: "deliveryTime" },
+    create: { key: "deliveryTime", value: "30-45 min" },
+    update: {},
+  });
+  console.log("Setting 'deliveryTime' configurado.");
+
+  // Cupons de exemplo
+  await prisma.coupon.deleteMany();
+  await prisma.coupon.createMany({
+    data: [
+      { code: "PRIMEIROPEDIDO", type: "percent", value: 10, minOrder: 30, maxUses: null },
+      { code: "JAPA15", type: "fixed", value: 15, minOrder: 50, maxUses: 100 },
+    ],
+  });
+  console.log("2 cupons de exemplo criados.");
+
+  // Kits para a ocasião
+  await prisma.kit.deleteMany();
+
+  const sixPackId = find("Six Pack Pilsen");
+  const baldeGeloId = find("Balde de Gelo com Alça");
+  const sacoGeloId = find("Saco de Gelo em Cubos");
+  const isqueiroId = find("Isqueiro à Prova de Vento");
+  const whiskyId = find("Whisky Roble Dourado");
+  const vodkaId = find("Vodka Gelo Polar");
+  const comboVeraoId = find("Combo Drinks de Verão");
+  const ginId = find("Gin Botânico Jardim Azul");
+
+  const kits = [
+    {
+      name: "Kit Churrasco 🔥",
+      description: "Para a galera não passar sede. Cerveja, gelo e isqueiro.",
+      emoji: "🔥",
+      items: JSON.stringify(
+        [
+          { productId: sixPackId, quantity: 2 },
+          { productId: baldeGeloId, quantity: 1 },
+          { productId: isqueiroId, quantity: 1 },
+        ].filter((i) => i.productId)
+      ),
+    },
+    {
+      name: "Kit Noite de Card Game 🃏",
+      description: "Whisky, gelo e saco de cubos para manter a concentração.",
+      emoji: "🃏",
+      items: JSON.stringify(
+        [
+          { productId: whiskyId, quantity: 1 },
+          { productId: sacoGeloId, quantity: 2 },
+        ].filter((i) => i.productId)
+      ),
+    },
+    {
+      name: "Kit Verão na Piscina ☀️",
+      description: "Vodka, drinks e gelo para o calor.",
+      emoji: "☀️",
+      items: JSON.stringify(
+        [
+          { productId: vodkaId, quantity: 1 },
+          { productId: comboVeraoId, quantity: 1 },
+          { productId: sacoGeloId, quantity: 2 },
+        ].filter((i) => i.productId)
+      ),
+    },
+    {
+      name: "Kit Happy Hour Gin 🍸",
+      description: "Gin tônica para dois, ou um que gosta de beber bem.",
+      emoji: "🍸",
+      items: JSON.stringify(
+        [
+          { productId: ginId, quantity: 1 },
+          { productId: sacoGeloId, quantity: 1 },
+        ].filter((i) => i.productId)
+      ),
+    },
+  ].filter((k) => {
+    const items = JSON.parse(k.items) as { productId: string }[];
+    return items.length > 0;
+  });
+
+  for (const kit of kits) {
+    await prisma.kit.create({ data: kit });
+  }
+  console.log(`${kits.length} kits criados.`);
 }
 
 main()

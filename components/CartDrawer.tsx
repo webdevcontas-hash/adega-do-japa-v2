@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { CartItem } from "@/lib/types";
 import { getDeliveryFee } from "@/lib/delivery";
-import { useStoreOpen } from "@/components/StoreStatusProvider";
+import { useStoreStatus } from "@/components/StoreStatusProvider";
 import { useCustomer } from "@/components/CustomerProvider";
 
 function formatPrice(price: number) {
@@ -41,12 +41,16 @@ export default function CartDrawer({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  const { profile, saveProfile, session } = useCustomer();
-  const storeOpen = useStoreOpen();
+  // Cupom
+  const [couponInput, setCouponInput] = useState("");
+  const [couponCode, setCouponCode] = useState("");
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [couponMessage, setCouponMessage] = useState("");
+  const [couponLoading, setCouponLoading] = useState(false);
 
-  // Prefill (uma vez) com os dados salvos no aparelho / nome do Google, sem sobrescrever o que
-  // o usuário já digitou. Feito em efeito de propósito: no SSR os campos saem vazios e só são
-  // preenchidos no cliente, evitando mismatch de hidratação nos inputs controlados.
+  const { profile, saveProfile, session } = useCustomer();
+  const { open: storeOpen, deliveryTime } = useStoreStatus();
+
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (profile) {
@@ -62,9 +66,10 @@ export default function CartDrawer({
     }
   }, [profile, session]);
   /* eslint-enable react-hooks/set-state-in-effect */
+
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const deliveryFee = getDeliveryFee(neighborhood);
-  const total = subtotal + (items.length > 0 ? deliveryFee : 0);
+  const total = items.length > 0 ? Math.max(0, subtotal + deliveryFee - couponDiscount) : 0;
 
   async function handleCepBlur() {
     const digits = cep.replace(/\D/g, "");
@@ -74,20 +79,53 @@ export default function CartDrawer({
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
     try {
-      const response = await fetch(`https://viacep.com.br/ws/${digits}/json/`, {
-        signal: controller.signal,
-      });
+      const response = await fetch(`https://viacep.com.br/ws/${digits}/json/`, { signal: controller.signal });
       const data = await response.json();
       if (!data.erro) {
         setStreet(data.logradouro || "");
         setNeighborhood(data.bairro || "");
       }
     } catch {
-      // CEP inválido, timeout ou serviço indisponível: usuário preenche manualmente
+      // CEP inválido ou timeout: usuário preenche manualmente
     } finally {
       clearTimeout(timeout);
       setCepLoading(false);
     }
+  }
+
+  async function applyCoupon() {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+    setCouponLoading(true);
+    setCouponMessage("");
+    try {
+      const response = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, orderTotal: subtotal + deliveryFee }),
+      });
+      const data = await response.json();
+      if (data.valid) {
+        setCouponCode(code);
+        setCouponDiscount(data.discount);
+        setCouponMessage(`✅ ${data.message} (−${formatPrice(data.discount)})`);
+      } else {
+        setCouponCode("");
+        setCouponDiscount(0);
+        setCouponMessage(`❌ ${data.message}`);
+      }
+    } catch {
+      setCouponMessage("❌ Erro ao validar cupom.");
+    } finally {
+      setCouponLoading(false);
+    }
+  }
+
+  function removeCoupon() {
+    setCouponInput("");
+    setCouponCode("");
+    setCouponDiscount(0);
+    setCouponMessage("");
   }
 
   async function handleSubmit(event: React.FormEvent) {
@@ -97,8 +135,6 @@ export default function CartDrawer({
     setSubmitting(true);
 
     const address = `${street}, ${number}${complement ? ` - ${complement}` : ""} - ${neighborhood}`;
-
-    // Salva os dados no aparelho já no envio (conveniência local), independente do pagamento.
     saveProfile({ name: customerName, phone, cep, street, number, neighborhood, complement });
 
     try {
@@ -112,14 +148,13 @@ export default function CartDrawer({
           cep,
           neighborhood,
           address,
+          couponCode: couponCode || undefined,
           items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
         }),
       });
 
       const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Não foi possível gerar o pagamento.");
-      }
+      if (!response.ok) throw new Error(data.error || "Não foi possível gerar o pagamento.");
 
       onCheckoutSuccess(data);
     } catch (err) {
@@ -145,6 +180,10 @@ export default function CartDrawer({
       >
         <div className="mx-auto mb-4 h-1 w-12 rounded-full bg-border" />
         <h2 className="text-lg font-bold text-foreground">Seu carrinho</h2>
+
+        {deliveryTime && (
+          <p className="mt-1 text-sm font-medium text-accent-dark">🕐 Tempo estimado: {deliveryTime}</p>
+        )}
 
         {items.length === 0 ? (
           <p className="mt-6 text-center text-muted">Seu carrinho está vazio.</p>
@@ -176,6 +215,41 @@ export default function CartDrawer({
               ))}
             </ul>
 
+            {/* Cupom de desconto */}
+            <div className="mt-4 flex gap-2">
+              {couponCode ? (
+                <div className="flex flex-1 items-center justify-between rounded-lg border border-green-200 bg-green-50 px-3 py-2">
+                  <span className="text-sm font-medium text-green-700">{couponCode}</span>
+                  <button onClick={removeCoupon} className="text-xs text-red-500 hover:underline">
+                    Remover
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <input
+                    placeholder="Cupom de desconto"
+                    value={couponInput}
+                    onChange={(e) => setCouponInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && applyCoupon()}
+                    className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-base uppercase placeholder:normal-case placeholder:text-muted md:text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={applyCoupon}
+                    disabled={couponLoading || !couponInput.trim()}
+                    className="rounded-lg border border-accent px-3 py-2 text-sm font-semibold text-accent-dark transition hover:bg-accent-light disabled:opacity-50"
+                  >
+                    {couponLoading ? "…" : "Aplicar"}
+                  </button>
+                </>
+              )}
+            </div>
+            {couponMessage && (
+              <p className={`mt-1 text-xs ${couponMessage.startsWith("✅") ? "text-green-600" : "text-red-600"}`}>
+                {couponMessage}
+              </p>
+            )}
+
             <div className="mt-4 space-y-1 border-t border-border pt-3 text-sm">
               <div className="flex justify-between text-muted">
                 <span>Subtotal</span>
@@ -185,6 +259,12 @@ export default function CartDrawer({
                 <span>Taxa de entrega</span>
                 <span>{formatPrice(deliveryFee)}</span>
               </div>
+              {couponDiscount > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>Desconto ({couponCode})</span>
+                  <span>−{formatPrice(couponDiscount)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-base font-bold text-foreground">
                 <span>Total</span>
                 <span>{formatPrice(total)}</span>
@@ -196,14 +276,14 @@ export default function CartDrawer({
                 required
                 placeholder="Seu nome"
                 value={customerName}
-                onChange={(event) => setCustomerName(event.target.value)}
+                onChange={(e) => setCustomerName(e.target.value)}
                 className="rounded-lg border border-border bg-background px-3 py-2 text-base md:text-sm text-foreground placeholder:text-muted"
               />
               <input
                 required
                 placeholder="WhatsApp (com DDD)"
                 value={phone}
-                onChange={(event) => setPhone(event.target.value)}
+                onChange={(e) => setPhone(e.target.value)}
                 className="rounded-lg border border-border bg-background px-3 py-2 text-base md:text-sm text-foreground placeholder:text-muted"
               />
               <div className="flex gap-2">
@@ -211,7 +291,7 @@ export default function CartDrawer({
                   required
                   placeholder="CEP"
                   value={cep}
-                  onChange={(event) => setCep(event.target.value)}
+                  onChange={(e) => setCep(e.target.value)}
                   onBlur={handleCepBlur}
                   className="w-32 rounded-lg border border-border bg-background px-3 py-2 text-base md:text-sm text-foreground placeholder:text-muted"
                 />
@@ -221,7 +301,7 @@ export default function CartDrawer({
                 required
                 placeholder="Rua"
                 value={street}
-                onChange={(event) => setStreet(event.target.value)}
+                onChange={(e) => setStreet(e.target.value)}
                 className="rounded-lg border border-border bg-background px-3 py-2 text-base md:text-sm text-foreground placeholder:text-muted"
               />
               <div className="flex gap-2">
@@ -229,21 +309,21 @@ export default function CartDrawer({
                   required
                   placeholder="Número"
                   value={number}
-                  onChange={(event) => setNumber(event.target.value)}
+                  onChange={(e) => setNumber(e.target.value)}
                   className="w-24 rounded-lg border border-border bg-background px-3 py-2 text-base md:text-sm text-foreground placeholder:text-muted"
                 />
                 <input
                   required
                   placeholder="Bairro"
                   value={neighborhood}
-                  onChange={(event) => setNeighborhood(event.target.value)}
+                  onChange={(e) => setNeighborhood(e.target.value)}
                   className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-base md:text-sm text-foreground placeholder:text-muted"
                 />
               </div>
               <input
                 placeholder="Complemento (opcional)"
                 value={complement}
-                onChange={(event) => setComplement(event.target.value)}
+                onChange={(e) => setComplement(e.target.value)}
                 className="rounded-lg border border-border bg-background px-3 py-2 text-base md:text-sm text-foreground placeholder:text-muted"
               />
 

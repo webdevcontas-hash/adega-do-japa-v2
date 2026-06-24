@@ -23,26 +23,55 @@ model Product {
 }
 
 model Order {
-  id           String      @id @default(cuid())
-  customerName String
-  phone        String
-  email        String?
-  address      String
-  neighborhood String?
-  cep          String?
-  deliveryFee  Float       @default(0)
-  total        Float
-  status       String      @default("PENDING")
-  accepted     Boolean     @default(false)
-  pixId        String?
-  qrCode       String?
-  qrCodeBase64 String?
-  items        OrderItem[]
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id             String      @id @default(cuid())
+  customerName   String
+  phone          String
+  email          String?
+  address        String
+  neighborhood   String?
+  cep            String?
+  deliveryFee    Float       @default(0)
+  total          Float
+  couponCode     String?
+  couponDiscount Float?
+  status         String      @default("PENDING")
+  deliveryStatus String      @default("WAITING")
+  accepted       Boolean     @default(false)
+  pixId          String?
+  qrCode         String?
+  qrCodeBase64   String?
+  items          OrderItem[]
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
   @@index([phone])
   @@index([email])
+}
+
+model Setting {
+  key   String @id
+  value String
+}
+
+model Coupon {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  type      String   // "percent" | "fixed"
+  value     Float
+  minOrder  Float    @default(0)
+  maxUses   Int?
+  usedCount Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Kit {
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String?
+  emoji       String  @default("🎁")
+  items       String  // JSON: [{ productId, quantity }]
+  active      Boolean @default(true)
 }
 
 model OrderItem {

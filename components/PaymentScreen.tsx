@@ -1,8 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { DeliveryStatus } from "@/lib/types";
 
 const PAYMENT_WINDOW_SECONDS = 10 * 60;
+
+type OrderStatus = "PENDING" | "PAID" | "DELIVERED";
+
+const DELIVERY_STEPS: { key: DeliveryStatus; label: string; emoji: string }[] = [
+  { key: "WAITING", label: "Pedido recebido", emoji: "📋" },
+  { key: "PREPARING", label: "Preparando", emoji: "🔧" },
+  { key: "OUT_FOR_DELIVERY", label: "Saiu para entrega", emoji: "🛵" },
+  { key: "DELIVERED", label: "Entregue!", emoji: "✅" },
+];
 
 function formatTime(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60);
@@ -24,7 +34,8 @@ export default function PaymentScreen({
   onClose: () => void;
 }) {
   const [secondsLeft, setSecondsLeft] = useState(PAYMENT_WINDOW_SECONDS);
-  const [status, setStatus] = useState<"PENDING" | "PAID" | "DELIVERED">("PENDING");
+  const [status, setStatus] = useState<OrderStatus>("PENDING");
+  const [deliveryStatus, setDeliveryStatus] = useState<DeliveryStatus>("WAITING");
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
 
@@ -36,10 +47,10 @@ export default function PaymentScreen({
   }, []);
 
   useEffect(() => {
-    if (status === "PAID") return;
+    if (status === "PAID" && deliveryStatus === "DELIVERED") return;
 
     async function tick() {
-      if (document.hidden) return; // não consulta com a aba em segundo plano
+      if (document.hidden) return;
       try {
         const response = await fetch(`/api/orders/${orderId}`);
         if (!response.ok) return;
@@ -47,22 +58,22 @@ export default function PaymentScreen({
         if (data.status === "PAID" || data.status === "DELIVERED") {
           setStatus(data.status);
         }
+        if (data.deliveryStatus) {
+          setDeliveryStatus(data.deliveryStatus as DeliveryStatus);
+        }
       } catch {
-        // tenta novamente no próximo ciclo
+        // tenta no próximo ciclo
       }
     }
 
     const poll = setInterval(tick, 4000);
-    const onVisible = () => {
-      if (!document.hidden) tick();
-    };
+    const onVisible = () => { if (!document.hidden) tick(); };
     document.addEventListener("visibilitychange", onVisible);
-
     return () => {
       clearInterval(poll);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [orderId, status]);
+  }, [orderId, status, deliveryStatus]);
 
   async function copyCode() {
     setCopyFailed(false);
@@ -70,7 +81,6 @@ export default function PaymentScreen({
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(qrCode);
       } else {
-        // Fallback para WebViews/contextos sem Clipboard API (comum no mobile)
         const textarea = document.createElement("textarea");
         textarea.value = qrCode;
         textarea.style.position = "fixed";
@@ -85,26 +95,66 @@ export default function PaymentScreen({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Último recurso: expõe o código para o cliente copiar manualmente
       setCopyFailed(true);
     }
   }
 
+  const currentStepIndex = DELIVERY_STEPS.findIndex((step) => step.key === deliveryStatus);
+
   if (status === "PAID" || status === "DELIVERED") {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/60 p-4">
-        <div className="w-full max-w-sm rounded-2xl bg-card p-6 text-center text-foreground shadow-2xl">
-          <div className="text-5xl">✅</div>
-          <h2 className="mt-3 text-xl font-bold">Pagamento confirmado!</h2>
-          <p className="mt-2 text-sm text-muted">
-            Seu pedido foi pago e já está sendo preparado. Em breve chega até você.
-          </p>
-          <button
-            onClick={onClose}
-            className="mt-6 w-full rounded-lg bg-accent py-3 font-semibold text-white hover:bg-accent-dark"
-          >
-            Fechar
-          </button>
+        <div className="w-full max-w-sm rounded-2xl bg-card p-6 text-foreground shadow-2xl">
+          <div className="text-center">
+            <div className="text-5xl">✅</div>
+            <h2 className="mt-3 text-xl font-bold">Pagamento confirmado!</h2>
+            <p className="mt-2 text-sm text-muted">Acompanhe o seu pedido em tempo real abaixo.</p>
+          </div>
+
+          {/* Rastreamento de entrega */}
+          <div className="mt-6 space-y-3">
+            {DELIVERY_STEPS.map((step, index) => {
+              const isDone = index <= currentStepIndex;
+              const isCurrent = index === currentStepIndex;
+              return (
+                <div key={step.key} className="flex items-center gap-3">
+                  <div
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg transition-all ${
+                      isDone
+                        ? "bg-accent text-white shadow-md"
+                        : "bg-slate-100 text-slate-400"
+                    } ${isCurrent ? "ring-2 ring-accent ring-offset-2" : ""}`}
+                  >
+                    {step.emoji}
+                  </div>
+                  <div className="flex-1">
+                    <p className={`text-sm font-semibold ${isDone ? "text-foreground" : "text-muted"}`}>
+                      {step.label}
+                    </p>
+                    {isCurrent && deliveryStatus !== "DELIVERED" && (
+                      <p className="text-xs text-accent-dark">Em andamento...</p>
+                    )}
+                  </div>
+                  {isDone && index < currentStepIndex && (
+                    <span className="text-xs font-bold text-green-600">✓</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {deliveryStatus === "DELIVERED" ? (
+            <button
+              onClick={onClose}
+              className="mt-6 w-full rounded-lg bg-accent py-3 font-semibold text-white hover:bg-accent-dark"
+            >
+              Fechar
+            </button>
+          ) : (
+            <p className="mt-5 text-center text-xs text-muted">
+              Esta tela atualiza automaticamente. Pode minimizar o app. 😊
+            </p>
+          )}
         </div>
       </div>
     );
@@ -139,7 +189,7 @@ export default function PaymentScreen({
               className="mt-4 w-full truncate rounded-lg border border-border px-3 py-3 text-xs text-foreground hover:bg-accent-light"
               title={qrCode}
             >
-              {copied ? "Código copiado!" : "Copiar código Pix"}
+              {copied ? "Código copiado! ✅" : "Copiar código Pix"}
             </button>
 
             {copyFailed && (
@@ -150,7 +200,7 @@ export default function PaymentScreen({
                 <textarea
                   readOnly
                   value={qrCode}
-                  onFocus={(event) => event.currentTarget.select()}
+                  onFocus={(e) => e.currentTarget.select()}
                   className="mt-1 h-20 w-full resize-none rounded-lg border border-border bg-background p-2 text-[11px] text-foreground"
                 />
               </div>

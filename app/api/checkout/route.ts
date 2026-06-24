@@ -17,6 +17,7 @@ const checkoutSchema = z.object({
   cep: z.string().trim().optional(),
   neighborhood: z.string().trim().optional(),
   address: z.string().trim().min(1).max(300),
+  couponCode: z.string().trim().toUpperCase().optional(),
   items: z
     .array(z.object({ productId: z.string().min(1), quantity: z.number().int().positive().max(99) }))
     .min(1)
@@ -40,7 +41,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Dados do pedido inválidos." }, { status: 400 });
   }
 
-  const { customerName, phone, email, cep, neighborhood, address, items } = parsed.data;
+  const { customerName, phone, email, cep, neighborhood, address, couponCode, items } = parsed.data;
 
   const products = await prisma.product.findMany({
     where: { id: { in: items.map((item) => item.productId) }, isAvailable: true },
@@ -56,7 +57,22 @@ export async function POST(request: Request) {
     return { productId: product.id, quantity: item.quantity, price: product.price };
   });
   const subtotal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const total = Math.round((subtotal + deliveryFee) * 100) / 100;
+
+  // Validar e aplicar cupom no servidor (nunca confiar no valor vindo do client)
+  let couponDiscount = 0;
+  let validatedCouponCode: string | null = null;
+  if (couponCode) {
+    const coupon = await prisma.coupon.findUnique({ where: { code: couponCode } });
+    if (coupon && coupon.active && (coupon.maxUses === null || coupon.usedCount < coupon.maxUses) && subtotal + deliveryFee >= coupon.minOrder) {
+      couponDiscount =
+        coupon.type === "percent"
+          ? Math.round(subtotal * (coupon.value / 100) * 100) / 100
+          : Math.min(coupon.value, subtotal);
+      validatedCouponCode = coupon.code;
+    }
+  }
+
+  const total = Math.round((subtotal + deliveryFee - couponDiscount) * 100) / 100;
 
   const order = await prisma.order.create({
     data: {
@@ -68,10 +84,20 @@ export async function POST(request: Request) {
       cep,
       deliveryFee,
       total,
+      couponCode: validatedCouponCode,
+      couponDiscount: couponDiscount > 0 ? couponDiscount : null,
       status: "PENDING",
       items: { create: orderItems },
     },
   });
+
+  // Incrementa contador de uso do cupom após pedido criado com sucesso
+  if (validatedCouponCode) {
+    await prisma.coupon.update({
+      where: { code: validatedCouponCode },
+      data: { usedCount: { increment: 1 } },
+    });
+  }
 
   try {
     const payment = await getPaymentClient().create({

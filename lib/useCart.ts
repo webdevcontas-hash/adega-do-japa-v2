@@ -61,5 +61,21 @@ export function useCart() {
     });
   }
 
-  return { cart, itemCount, subtotal, addToCart, changeQuantity, clear, reorder };
+  /** Adiciona vários produtos de uma vez (ex: kit completo) em uma única atualização de estado. */
+  function addManyToCart(items: CartItem[]) {
+    setCart((current) => {
+      const merged = [...current];
+      for (const item of items) {
+        const existing = merged.find((entry) => entry.productId === item.productId);
+        if (existing) {
+          existing.quantity += item.quantity;
+        } else {
+          merged.push({ ...item });
+        }
+      }
+      return merged;
+    });
+  }
+
+  return { cart, itemCount, subtotal, addToCart, changeQuantity, clear, reorder, addManyToCart };
 }

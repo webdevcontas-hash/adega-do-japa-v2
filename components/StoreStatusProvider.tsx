@@ -2,9 +2,9 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 
-export type StoreStatus = { open: boolean; openingHour: number; closingHour: number };
+export type StoreStatus = { open: boolean; openingHour: number; closingHour: number; deliveryTime: string };
 
-const DEFAULT_STATUS: StoreStatus = { open: true, openingHour: 18, closingHour: 3 };
+const DEFAULT_STATUS: StoreStatus = { open: true, openingHour: 18, closingHour: 3, deliveryTime: "" };
 
 const StoreStatusContext = createContext<StoreStatus>(DEFAULT_STATUS);
 

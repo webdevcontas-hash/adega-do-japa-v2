@@ -6,7 +6,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   const order = await prisma.order.findUnique({
     where: { id },
-    select: { id: true, status: true, accepted: true, total: true },
+    select: { id: true, status: true, accepted: true, total: true, deliveryStatus: true },
   });
 
   if (!order) {
