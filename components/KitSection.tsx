@@ -2,6 +2,18 @@
 
 import { useEffect, useState } from "react";
 import type { Kit, CartItem } from "@/lib/types";
+import type { IconType } from "react-icons";
+import { FaFire, FaDiceD6, FaSun, FaMartiniGlass, FaBeerMugEmpty, FaGift } from "react-icons/fa6";
+
+function kitIconFor(name: string): IconType {
+  const lower = name.toLowerCase();
+  if (lower.includes("churrasco") || lower.includes("fogo")) return FaFire;
+  if (lower.includes("card") || lower.includes("game") || lower.includes("dado")) return FaDiceD6;
+  if (lower.includes("verão") || lower.includes("piscina") || lower.includes("sol")) return FaSun;
+  if (lower.includes("gin") || lower.includes("happy hour") || lower.includes("drink") || lower.includes("coquetel")) return FaMartiniGlass;
+  if (lower.includes("cerveja") || lower.includes("choppada")) return FaBeerMugEmpty;
+  return FaGift;
+}
 
 function formatPrice(price: number) {
   return price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -47,7 +59,9 @@ export default function KitSection({ onAddKit }: { onAddKit: (items: CartItem[])
             className="flex flex-col justify-between rounded-2xl border border-border bg-card p-4 shadow-sm shadow-black/20"
           >
             <div>
-              <div className="text-4xl">{kit.emoji}</div>
+              <div className="text-accent">
+                {(() => { const Icon = kitIconFor(kit.name); return <Icon className="text-[2.5rem]" />; })()}
+              </div>
               <h4 className="mt-2 font-bold text-foreground">{kit.name}</h4>
               {kit.description && <p className="mt-1 text-xs text-muted">{kit.description}</p>}
               <ul className="mt-2 space-y-0.5">
