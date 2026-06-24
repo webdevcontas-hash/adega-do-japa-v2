@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { Plus, Minus, X } from "lucide-react";
 import type { ProductModel } from "@/app/generated/prisma/models";
 import { themeFor } from "@/components/v2/theme";
+import ProductIcon from "@/components/v2/icons/ProductIcon";
 
 function formatPrice(price: number) {
   return `R$ ${price.toFixed(2).replace(".", ",")}`;
@@ -59,9 +60,11 @@ export default function ProductDetailV2({
           <X className="h-5 w-5" />
         </button>
 
-        {/* Hero com emoji grande e cor da categoria */}
+        {/* Hero com ícone SVG e cor da categoria */}
         <div className={`relative flex h-52 items-center justify-center ${theme.btn.split(" ")[0]} rounded-t-3xl`}>
-          <span className="select-none text-8xl drop-shadow-lg">{theme.emoji}</span>
+          <div className="text-white drop-shadow-lg">
+            <ProductIcon name={product.name} category={product.category} className="h-28 w-28" />
+          </div>
           <span
             className={`absolute left-5 top-5 rounded-full px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider shadow-sm ${theme.badge}`}
           >

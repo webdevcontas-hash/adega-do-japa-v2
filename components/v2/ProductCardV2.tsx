@@ -1,6 +1,7 @@
 import { Plus, Minus } from "lucide-react";
 import type { ProductModel } from "@/app/generated/prisma/models";
 import { themeFor } from "@/components/v2/theme";
+import ProductIcon from "@/components/v2/icons/ProductIcon";
 
 function formatPrice(price: number) {
   return `R$ ${price.toFixed(2).replace(".", ",")}`;
@@ -36,8 +37,10 @@ export default function ProductCardV2({
       className="group flex h-full cursor-pointer flex-col justify-between rounded-2xl border border-orange-100 bg-white p-4 shadow-sm transition-all duration-300 hover:border-orange-200 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
     >
       <div>
-        <div className="relative mb-3.5 flex h-36 items-center justify-center overflow-hidden rounded-xl bg-slate-50 text-5xl transition-transform duration-300 group-hover:scale-[1.02]">
-          <span className="z-10 group-hover:animate-bounce">{theme.emoji}</span>
+        <div className="relative mb-3.5 flex h-36 items-center justify-center overflow-hidden rounded-xl bg-slate-50 transition-transform duration-300 group-hover:scale-[1.02]">
+          <div className={`z-10 transition-transform duration-300 group-hover:scale-110 ${theme.text}`}>
+            <ProductIcon name={product.name} category={product.category} className="h-16 w-16" />
+          </div>
           <span className={`absolute left-2.5 top-2.5 rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider shadow-sm ${theme.badge}`}>
             {product.category}
           </span>
