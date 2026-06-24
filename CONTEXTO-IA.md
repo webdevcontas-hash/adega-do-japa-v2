@@ -1,6 +1,6 @@
 # Adega do Japa V2 — Contexto para IA
 
-> Atualizado em: 23/06/2026 22:30 · Notebook Renan | Leia este arquivo antes de qualquer alteração no projeto.
+> Atualizado em: 24/06/2026 08:20 · Renan Notebook Gordon | Leia este arquivo antes de qualquer alteração no projeto.
 
 ---
 
@@ -65,7 +65,7 @@ adega-do-japa/
 ├── CONTEXTO-IA.md
 ├── HANDOFF.md
 ├── prisma/
-│   ├── schema.prisma        # Product, Order, OrderItem (status como String, não enum — SQLite)
+│   ├── schema.prisma        # Product, Order (com email? + índices phone/email), OrderItem (status como String — SQLite)
 │   ├── seed.ts               # 28 produtos fictícios; idempotente (deleteMany antes de criar)
 │   └── migrations/
 ├── app/
@@ -90,16 +90,18 @@ adega-do-japa/
 
 | Módulo | Caminho/Arquivo | Descrição |
 |--------|-----------------|-----------|
-| Catálogo | `app/page.tsx`, `components/Storefront.tsx` | Lista produtos por categoria, gerencia carrinho em estado React |
-| Detalhe do produto | `components/ProductCard.tsx`, `components/ProductDetail.tsx` | Clicar no card (fora do botão "+") abre tela full-screen com imagem, categoria, descrição completa e seletor de quantidade; botão "X" fecha |
-| Filtro 18+ | `components/AgeGate.tsx` | Bloqueia tela até confirmar maioridade (localStorage, via `useSyncExternalStore`) |
-| Horário de funcionamento | `lib/business-hours.ts`, `app/api/store-status/route.ts` | Server-side lê `BUSINESS_HOURS_OPEN/CLOSE`; client consome via API (env não é `NEXT_PUBLIC_`) |
+| Catálogo (loja V2) | `app/page.tsx`, `components/v2/StorefrontV2.tsx` | Hub de categorias + grid de produtos; gerencia carrinho (`lib/useCart.ts`). Envolve a árvore em `StoreStatusProvider` e `CustomerProvider` |
+| Detalhe do produto (V2) | `components/v2/ProductCardV2.tsx`, `components/v2/ProductDetailV2.tsx` | Clicar no card (fora dos botões +/-) abre o modal `ProductDetailV2` com emoji grande, descrição completa, preço e +/- ligado ao carrinho. Fecha no X/fundo/Esc, trava scroll. Botões +/- usam `stopPropagation` |
+| Conta do cliente | `components/CustomerProvider.tsx`, `components/AccountDrawer.tsx`, `app/api/my-orders/route.ts` | **Conta leve** (localStorage via `useSyncExternalStore`): prefill do checkout + "Meus pedidos" + "Pedir novamente" (repõe itens com preço atual). Identidade por telefone e/ou email |
+| Login com Google | `app/api/auth/google/**`, `app/api/auth/session`, `app/api/auth/logout`, `lib/customer-auth.ts`, `lib/google-oauth.ts` | OAuth manual; sessão assinada por HMAC (cookie httpOnly 30d). Só ativa com `GOOGLE_CLIENT_ID/SECRET`; senão a rota dá 503 e o botão fica oculto |
+| Filtro 18+ | `components/AgeGate.tsx` | Bloqueia tela até confirmar maioridade (localStorage). `getServerSnapshot` retorna `false` → gate já no SSR, sem flash da loja |
+| Status da loja | `components/StoreStatusProvider.tsx`, `lib/business-hours.ts`, `app/api/store-status/route.ts` | **Provider único** (1 poller para toda a árvore); pausa com a aba em segundo plano. Server lê `BUSINESS_HOURS_OPEN/CLOSE`; client consome via API |
 | Carrinho/Checkout | `components/CartDrawer.tsx`, `app/api/checkout/route.ts` | Form com autofill de CEP (ViaCEP) e taxa de entrega por bairro; servidor recalcula preços/total a partir do banco (nunca confia no valor do client) |
 | Pix | `lib/mercadopago.ts`, `app/api/checkout/route.ts` | Cria pagamento Pix; expiração de 10 min |
 | Tela de pagamento | `components/PaymentScreen.tsx` | QR code + copia-e-cola + cronômetro; faz polling em `/api/orders/[id]` |
 | Webhook | `app/api/payment/webhook/route.ts` | Valida assinatura (se `MERCADOPAGO_WEBHOOK_SECRET` definido), busca pagamento real na API do MP, marca `PAID`, evita notificar duas vezes |
 | WhatsApp | `lib/whatsapp.ts` | `notifyOrderPaid()` — troque o corpo de `sendWhatsAppMessage` para integrar de fato |
-| Dashboard | `app/dashboard/`, `components/DashboardPanel.tsx`, `lib/dashboard-auth.ts` | Senha única (`DASHBOARD_PASSWORD`) via cookie httpOnly; alerta sonoro (beep via Web Audio API) enquanto houver pedido `PAID` com `accepted: false` |
+| Dashboard | `app/dashboard/`, `components/DashboardPanel.tsx`, `lib/dashboard-auth.ts` | Senha única (`DASHBOARD_PASSWORD`); o cookie guarda um **HMAC** da senha (não a senha), comparação constant-time. Alerta sonoro enquanto houver pedido `PAID` com `accepted: false`; polling pausa em background |
 
 ---
 
@@ -112,8 +114,11 @@ adega-do-japa/
 5. **Env vars sem `NEXT_PUBLIC_` não existem no client.** Por isso o horário de funcionamento é lido no servidor e exposto via `/api/store-status` em vez de ser lido direto por componentes client.
 6. **Cascade delete**: `OrderItem.order` tem `onDelete: Cascade` — sem isso, excluir um `Order` (ex.: rollback quando o Pix falha no checkout) quebra com `P2003` (violação de FK). Bug real encontrado e corrigido na sessão 1.
 7. **Servidor sempre recalcula preços e total** no checkout a partir do banco — nunca confiar em `price`/`total` vindos do client.
-8. **Catálogo é `force-dynamic`** (`app/page.tsx`) — sem isso o Next prerenderiza a lista de produtos como estática no build e ela não reflete alterações no banco.
-9. **Cuidado com `text-{size}` em containers com emoji grande**: em `ProductDetail.tsx` o placeholder 🍾 usa `text-7xl` no `div` pai; qualquer botão/elemento filho sem `text-{size}` próprio herda esse tamanho gigante (foi o caso do botão "X", corrigido com `text-base` explícito). Sempre dar um `text-*` explícito a elementos interativos dentro desses containers.
+8. **Catálogo usa ISR**: `app/page.tsx` exporta `export const revalidate = 60` (não mais `force-dynamic`). A lista é cacheada/revalidada a cada 60s (melhor TTFB no mobile). Alterações de catálogo aparecem em até 60s — usar `revalidatePath("/")` no fluxo de admin para refletir na hora. **`/dashboard` continua `force-dynamic`** (auth).
+9. **Cuidado com `text-{size}` em containers com emoji grande**: em `ProductDetailV2.tsx` o hero usa emoji `text-8xl`; qualquer botão/elemento filho sem `text-{size}` próprio herda esse tamanho. O botão "X" tem `text-base` explícito. Sempre dar `text-*` explícito a elementos interativos dentro desses containers.
+10. **Sessões via HMAC** (`lib/dashboard-auth.ts` e `lib/customer-auth.ts`): cookies guardam um HMAC-SHA256 (assinado com `SESSION_SECRET`), nunca o segredo cru. Comparação com `timingSafeEqual`. A sessão do cliente é um payload `{email,name,picture,exp}` assinado.
+11. **Inputs em 16px no mobile** (`text-base md:text-sm`): evita o zoom automático do iOS ao focar campos. Manter esse padrão em qualquer input novo.
+12. **`setState` em efeito é erro de lint** (`react-hooks/set-state-in-effect`): preferir `useSyncExternalStore` (ver `CustomerProvider`/`AgeGate`) ou colocar o `setState` dentro de callback assíncrono. O prefill do `CartDrawer` desliga a regra pontualmente (é hidratação de formulário SSR-safe).
 
 ---
 
@@ -122,11 +127,13 @@ adega-do-japa/
 | Variável | Descrição |
 |----------|-----------|
 | `DATABASE_URL` | String de conexão SQLite (`file:./dev.db`) |
-| `NEXT_PUBLIC_BASE_URL` | URL pública do site, usada para montar a `notification_url` do webhook |
+| `NEXT_PUBLIC_BASE_URL` | URL pública do site, usada para montar a `notification_url` do webhook e o redirect do Google |
 | `MERCADOPAGO_ACCESS_TOKEN` | Access token da conta Mercado Pago do cliente (Pix) |
 | `MERCADOPAGO_WEBHOOK_SECRET` | Secret de assinatura do webhook (painel MP) — opcional, mas recomendado em produção |
 | `WHATSAPP_STORE_NUMBER` | Número que recebe a notificação de pedido pago, formato `55DDDNUMERO` |
 | `DASHBOARD_PASSWORD` | Senha de acesso ao painel `/dashboard` |
+| `SESSION_SECRET` | **Segredo HMAC** que assina as sessões (dashboard + login do cliente). Obrigatório p/ auth. String aleatória longa. |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Credenciais OAuth do Google (opcional). Sem elas, o login Google fica oculto e a conta leve continua funcionando. Redirect URI: `<BASE_URL>/api/auth/google/callback` |
 | `BUSINESS_HOURS_OPEN` / `BUSINESS_HOURS_CLOSE` | Horário de funcionamento (0-23, pode cruzar a meia-noite) |
 
 ---
@@ -136,6 +143,7 @@ adega-do-japa/
 | Máquina | Responsável | IA | Última sessão |
 |---------|-------------|-----|---------------|
 | Renan Desktop | Renan | Claude Code | 23/06/2026 |
+| Renan Notebook Gordon (DELL) | Renan | Claude Code | 24/06/2026 |
 
 ---
 
