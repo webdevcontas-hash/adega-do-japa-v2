@@ -11,6 +11,7 @@ import PaymentScreen from "@/components/PaymentScreen";
 import HeaderV2 from "@/components/v2/HeaderV2";
 import CategoryHubV2 from "@/components/v2/CategoryHubV2";
 import ProductCardV2 from "@/components/v2/ProductCardV2";
+import ProductDetailV2 from "@/components/v2/ProductDetailV2";
 import { useCart, type CheckoutResult } from "@/lib/useCart";
 
 const CATEGORY_HEADINGS: Record<string, string> = {
@@ -32,6 +33,7 @@ function StorefrontV2Content({ products }: { products: ProductModel[] }) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [detailProduct, setDetailProduct] = useState<ProductModel | null>(null);
   const [payment, setPayment] = useState<CheckoutResult | null>(null);
   const { cart, itemCount, addToCart, changeQuantity, clear } = useCart();
   const { open } = useStoreStatus();
@@ -122,6 +124,7 @@ function StorefrontV2Content({ products }: { products: ProductModel[] }) {
                     quantityInCart={quantityOf(product.id)}
                     onAdd={addToCart}
                     onRemoveOne={removeOne}
+                    onOpenDetails={setDetailProduct}
                   />
                 ))}
               </div>
@@ -165,6 +168,16 @@ function StorefrontV2Content({ products }: { products: ProductModel[] }) {
         onChangeQuantity={changeQuantity}
         onCheckoutSuccess={handleCheckoutSuccess}
       />
+
+      {detailProduct && (
+        <ProductDetailV2
+          product={detailProduct}
+          quantityInCart={quantityOf(detailProduct.id)}
+          onAdd={addToCart}
+          onRemoveOne={removeOne}
+          onClose={() => setDetailProduct(null)}
+        />
+      )}
 
       {payment && (
         <PaymentScreen

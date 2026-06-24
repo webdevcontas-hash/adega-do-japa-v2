@@ -11,16 +11,30 @@ export default function ProductCardV2({
   quantityInCart,
   onAdd,
   onRemoveOne,
+  onOpenDetails,
 }: {
   product: ProductModel;
   quantityInCart: number;
   onAdd: (product: ProductModel) => void;
   onRemoveOne: (product: ProductModel) => void;
+  onOpenDetails: (product: ProductModel) => void;
 }) {
   const theme = themeFor(product.category);
 
   return (
-    <div className="group flex h-full flex-col justify-between rounded-2xl border border-orange-100 bg-white p-4 shadow-sm transition-all duration-300 hover:border-orange-200 hover:shadow-md">
+    <div
+      onClick={() => onOpenDetails(product)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpenDetails(product);
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-label={`Ver detalhes de ${product.name}`}
+      className="group flex h-full cursor-pointer flex-col justify-between rounded-2xl border border-orange-100 bg-white p-4 shadow-sm transition-all duration-300 hover:border-orange-200 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+    >
       <div>
         <div className="relative mb-3.5 flex h-36 items-center justify-center overflow-hidden rounded-xl bg-slate-50 text-5xl transition-transform duration-300 group-hover:scale-[1.02]">
           <span className="z-10 group-hover:animate-bounce">{theme.emoji}</span>
@@ -46,7 +60,10 @@ export default function ProductCardV2({
         {quantityInCart > 0 ? (
           <div className="flex items-center gap-2.5 rounded-full border border-slate-200 bg-slate-100 p-1">
             <button
-              onClick={() => onRemoveOne(product)}
+              onClick={(event) => {
+                event.stopPropagation();
+                onRemoveOne(product);
+              }}
               aria-label={`Remover ${product.name}`}
               className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm transition-transform active:scale-90 hover:bg-slate-50 md:h-7 md:w-7"
             >
@@ -54,7 +71,10 @@ export default function ProductCardV2({
             </button>
             <span className="min-w-[12px] px-1 text-center text-sm font-extrabold text-slate-800">{quantityInCart}</span>
             <button
-              onClick={() => onAdd(product)}
+              onClick={(event) => {
+                event.stopPropagation();
+                onAdd(product);
+              }}
               aria-label={`Adicionar ${product.name}`}
               className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm transition-transform active:scale-90 hover:bg-slate-50 md:h-7 md:w-7"
             >
@@ -63,7 +83,10 @@ export default function ProductCardV2({
           </div>
         ) : (
           <button
-            onClick={() => onAdd(product)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onAdd(product);
+            }}
             aria-label={`Adicionar ${product.name}`}
             className={`flex h-9 w-9 items-center justify-center rounded-full text-white shadow-md shadow-orange-100 transition-all duration-300 hover:scale-105 active:scale-90 ${theme.btn}`}
           >
