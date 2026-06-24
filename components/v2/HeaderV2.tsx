@@ -1,13 +1,17 @@
-import { Search, MapPin, ShoppingCart } from "lucide-react";
+import { Search, ShoppingCart, User } from "lucide-react";
 
 export default function HeaderV2({
   cartCount,
   onCartClick,
+  onAccountClick,
+  customerName,
   searchQuery,
   setSearchQuery,
 }: {
   cartCount: number;
   onCartClick: () => void;
+  onAccountClick: () => void;
+  customerName?: string;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
 }) {
@@ -24,18 +28,27 @@ export default function HeaderV2({
           </h1>
         </div>
 
-        <button
-          onClick={onCartClick}
-          aria-label="Abrir carrinho"
-          className="relative cursor-pointer rounded-full bg-orange-50 p-2 text-orange-600 transition-all hover:bg-orange-100 md:hidden"
-        >
-          <ShoppingCart className="h-6 w-6" />
-          {cartCount > 0 && (
-            <span className="absolute -right-1 -top-1 animate-bounce rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-              {cartCount}
-            </span>
-          )}
-        </button>
+        <div className="flex items-center gap-2 md:hidden">
+          <button
+            onClick={onAccountClick}
+            aria-label="Minha conta"
+            className="cursor-pointer rounded-full bg-slate-100 p-2 text-slate-600 transition-all hover:bg-slate-200"
+          >
+            <User className="h-6 w-6" />
+          </button>
+          <button
+            onClick={onCartClick}
+            aria-label="Abrir carrinho"
+            className="relative cursor-pointer rounded-full bg-orange-50 p-2 text-orange-600 transition-all hover:bg-orange-100"
+          >
+            <ShoppingCart className="h-6 w-6" />
+            {cartCount > 0 && (
+              <span className="absolute -right-1 -top-1 animate-bounce rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                {cartCount}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Busca */}
@@ -52,19 +65,24 @@ export default function HeaderV2({
         </div>
       </div>
 
-      {/* Localização + carrinho (desktop) */}
-      <div className="hidden items-center gap-6 md:flex">
+      {/* Conta + carrinho (desktop) */}
+      <div className="hidden items-center gap-4 md:flex">
         <button
-          onClick={onCartClick}
-          className="group cursor-pointer rounded-xl p-2 text-left transition-colors hover:bg-slate-50"
+          onClick={onAccountClick}
+          aria-label="Minha conta"
+          className="group flex cursor-pointer items-center gap-2 rounded-xl p-2 text-left transition-colors hover:bg-slate-50"
         >
-          <div className="flex items-center gap-1.5">
-            <MapPin className="h-3 w-3 text-red-500" />
-            <p className="text-[10px] font-bold uppercase leading-none text-slate-400">Entregar em</p>
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition-colors group-hover:bg-orange-100 group-hover:text-orange-600">
+            <User className="h-5 w-5" />
           </div>
-          <p className="text-sm font-bold text-slate-700 transition-colors group-hover:text-orange-600">
-            Informe seu endereço
-          </p>
+          <div className="leading-tight">
+            <p className="text-[10px] font-bold uppercase leading-none text-slate-400">
+              {customerName ? "Conta" : "Entrar"}
+            </p>
+            <p className="text-sm font-bold text-slate-700 transition-colors group-hover:text-orange-600">
+              {customerName ? customerName.split(" ")[0] : "Pedir mais rápido"}
+            </p>
+          </div>
         </button>
 
         <button

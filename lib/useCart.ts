@@ -45,5 +45,21 @@ export function useCart() {
     setCart([]);
   }
 
-  return { cart, itemCount, subtotal, addToCart, changeQuantity, clear };
+  /** Repõe itens de um pedido anterior (preço atual do catálogo), somando ao carrinho. */
+  function reorder(items: CartItem[]) {
+    setCart((current) => {
+      const merged = [...current];
+      for (const item of items) {
+        const existing = merged.find((entry) => entry.productId === item.productId);
+        if (existing) {
+          existing.quantity += item.quantity;
+        } else {
+          merged.push({ ...item });
+        }
+      }
+      return merged;
+    });
+  }
+
+  return { cart, itemCount, subtotal, addToCart, changeQuantity, clear, reorder };
 }

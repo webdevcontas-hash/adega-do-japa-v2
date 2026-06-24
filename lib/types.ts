@@ -10,3 +10,21 @@ export type CartItem = {
   price: number;
   quantity: number;
 };
+
+/** Perfil leve do cliente, salvo no próprio dispositivo (localStorage). */
+export type CustomerProfile = {
+  name: string;
+  phone: string;
+  cep?: string;
+  street?: string;
+  number?: string;
+  neighborhood?: string;
+  complement?: string;
+};
+
+/** Identidade vinda do login com Google (sessão no servidor). */
+export type CustomerSessionUser = {
+  email: string;
+  name: string;
+  picture?: string;
+};

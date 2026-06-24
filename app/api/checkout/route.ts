@@ -13,6 +13,7 @@ const checkoutSchema = z.object({
     .min(8)
     .max(20)
     .regex(/^[\d\s()+-]+$/, "Telefone inválido"),
+  email: z.string().trim().email().max(180).optional().or(z.literal("")),
   cep: z.string().trim().optional(),
   neighborhood: z.string().trim().optional(),
   address: z.string().trim().min(1).max(300),
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Dados do pedido inválidos." }, { status: 400 });
   }
 
-  const { customerName, phone, cep, neighborhood, address, items } = parsed.data;
+  const { customerName, phone, email, cep, neighborhood, address, items } = parsed.data;
 
   const products = await prisma.product.findMany({
     where: { id: { in: items.map((item) => item.productId) }, isAvailable: true },
@@ -61,6 +62,7 @@ export async function POST(request: Request) {
     data: {
       customerName,
       phone,
+      email: email || null,
       address,
       neighborhood,
       cep,

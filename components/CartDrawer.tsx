@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CartItem } from "@/lib/types";
 import { getDeliveryFee } from "@/lib/delivery";
 import { useStoreOpen } from "@/components/StoreStatusProvider";
+import { useCustomer } from "@/components/CustomerProvider";
 
 function formatPrice(price: number) {
   return price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -40,7 +41,27 @@ export default function CartDrawer({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  const { profile, saveProfile, session } = useCustomer();
   const storeOpen = useStoreOpen();
+
+  // Prefill (uma vez) com os dados salvos no aparelho / nome do Google, sem sobrescrever o que
+  // o usuário já digitou. Feito em efeito de propósito: no SSR os campos saem vazios e só são
+  // preenchidos no cliente, evitando mismatch de hidratação nos inputs controlados.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (profile) {
+      setCustomerName((value) => value || profile.name || "");
+      setPhone((value) => value || profile.phone || "");
+      setCep((value) => value || profile.cep || "");
+      setStreet((value) => value || profile.street || "");
+      setNumber((value) => value || profile.number || "");
+      setNeighborhood((value) => value || profile.neighborhood || "");
+      setComplement((value) => value || profile.complement || "");
+    } else if (session?.name) {
+      setCustomerName((value) => value || session.name);
+    }
+  }, [profile, session]);
+  /* eslint-enable react-hooks/set-state-in-effect */
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const deliveryFee = getDeliveryFee(neighborhood);
   const total = subtotal + (items.length > 0 ? deliveryFee : 0);
@@ -77,6 +98,9 @@ export default function CartDrawer({
 
     const address = `${street}, ${number}${complement ? ` - ${complement}` : ""} - ${neighborhood}`;
 
+    // Salva os dados no aparelho já no envio (conveniência local), independente do pagamento.
+    saveProfile({ name: customerName, phone, cep, street, number, neighborhood, complement });
+
     try {
       const response = await fetch("/api/checkout", {
         method: "POST",
@@ -84,6 +108,7 @@ export default function CartDrawer({
         body: JSON.stringify({
           customerName,
           phone,
+          email: session?.email,
           cep,
           neighborhood,
           address,

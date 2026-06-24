@@ -6,7 +6,9 @@ import type { ProductModel } from "@/app/generated/prisma/models";
 import AgeGate from "@/components/AgeGate";
 import BusinessHoursNotice from "@/components/BusinessHoursNotice";
 import { StoreStatusProvider, useStoreStatus } from "@/components/StoreStatusProvider";
+import { CustomerProvider, useCustomer } from "@/components/CustomerProvider";
 import CartDrawer from "@/components/CartDrawer";
+import AccountDrawer from "@/components/AccountDrawer";
 import PaymentScreen from "@/components/PaymentScreen";
 import HeaderV2 from "@/components/v2/HeaderV2";
 import CategoryHubV2 from "@/components/v2/CategoryHubV2";
@@ -24,7 +26,9 @@ const CATEGORY_HEADINGS: Record<string, string> = {
 export default function StorefrontV2({ products }: { products: ProductModel[] }) {
   return (
     <StoreStatusProvider>
-      <StorefrontV2Content products={products} />
+      <CustomerProvider>
+        <StorefrontV2Content products={products} />
+      </CustomerProvider>
     </StoreStatusProvider>
   );
 }
@@ -33,10 +37,13 @@ function StorefrontV2Content({ products }: { products: ProductModel[] }) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const [detailProduct, setDetailProduct] = useState<ProductModel | null>(null);
   const [payment, setPayment] = useState<CheckoutResult | null>(null);
-  const { cart, itemCount, addToCart, changeQuantity, clear } = useCart();
+  const { cart, itemCount, addToCart, changeQuantity, clear, reorder } = useCart();
   const { open } = useStoreStatus();
+  const { session, profile } = useCustomer();
+  const customerName = session?.name ?? profile?.name;
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
@@ -71,6 +78,11 @@ function StorefrontV2Content({ products }: { products: ProductModel[] }) {
     setSelectedCategory(null);
   }
 
+  function handleReorder(items: Parameters<typeof reorder>[0]) {
+    reorder(items);
+    setDrawerOpen(true);
+  }
+
   return (
     <div className="flex min-h-screen flex-col justify-between bg-background selection:bg-orange-200">
       <AgeGate />
@@ -79,6 +91,8 @@ function StorefrontV2Content({ products }: { products: ProductModel[] }) {
         <HeaderV2
           cartCount={itemCount}
           onCartClick={() => setDrawerOpen(true)}
+          onAccountClick={() => setAccountOpen(true)}
+          customerName={customerName}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
         />
@@ -167,6 +181,12 @@ function StorefrontV2Content({ products }: { products: ProductModel[] }) {
         onClose={() => setDrawerOpen(false)}
         onChangeQuantity={changeQuantity}
         onCheckoutSuccess={handleCheckoutSuccess}
+      />
+
+      <AccountDrawer
+        isOpen={accountOpen}
+        onClose={() => setAccountOpen(false)}
+        onReorder={handleReorder}
       />
 
       {detailProduct && (
