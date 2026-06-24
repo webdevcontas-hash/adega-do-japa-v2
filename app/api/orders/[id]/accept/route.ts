@@ -8,7 +8,11 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   }
 
   const { id } = await params;
-  await prisma.order.update({ where: { id }, data: { accepted: true } });
+
+  const updated = await prisma.order.updateMany({ where: { id }, data: { accepted: true } });
+  if (updated.count === 0) {
+    return NextResponse.json({ error: "Pedido não encontrado." }, { status: 404 });
+  }
 
   return NextResponse.json({ ok: true });
 }

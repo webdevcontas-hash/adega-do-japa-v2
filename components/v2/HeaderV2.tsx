@@ -46,7 +46,7 @@ export default function HeaderV2({
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             placeholder="O que você procura? (cerveja, whisky, charuto...)"
-            className="w-full rounded-full border-2 border-transparent bg-slate-100 py-2.5 pl-11 pr-5 text-sm text-slate-700 transition-all focus:border-orange-400 focus:bg-white focus:outline-none"
+            className="w-full rounded-full border-2 border-transparent bg-slate-100 py-2.5 pl-11 pr-5 text-base text-slate-700 transition-all focus:border-orange-400 focus:bg-white focus:outline-none md:text-sm"
           />
           <Search className="absolute left-4 top-3 h-4 w-4 text-slate-400" />
         </div>

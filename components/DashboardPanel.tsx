@@ -38,17 +38,37 @@ function playBeep(audioContext: AudioContext) {
 
 export default function DashboardPanel() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
   const audioContextRef = useRef<AudioContext | null>(null);
   const alarmIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
+    let active = true;
+
     async function load() {
-      const response = await fetch("/api/orders");
-      if (response.ok) setOrders(await response.json());
+      if (document.hidden) return; // não consulta com a aba em segundo plano
+      try {
+        const response = await fetch("/api/orders");
+        if (response.ok && active) setOrders(await response.json());
+      } catch {
+        // mantém a lista atual em caso de falha de rede
+      } finally {
+        if (active) setLoading(false);
+      }
     }
+
     load();
     const interval = setInterval(load, 4000);
-    return () => clearInterval(interval);
+    const onVisible = () => {
+      if (!document.hidden) load();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, []);
 
   const pendingAlarm = orders.some((order) => order.status === "PAID" && !order.accepted);
@@ -118,7 +138,13 @@ export default function DashboardPanel() {
             </li>
           );
         })}
-        {orders.length === 0 && <p className="text-muted">Nenhum pedido ainda.</p>}
+        {loading && orders.length === 0 && (
+          <>
+            <li className="h-24 animate-pulse rounded-xl border border-border bg-card" />
+            <li className="h-24 animate-pulse rounded-xl border border-border bg-card" />
+          </>
+        )}
+        {!loading && orders.length === 0 && <p className="text-muted">Nenhum pedido ainda.</p>}
       </ul>
     </div>
   );

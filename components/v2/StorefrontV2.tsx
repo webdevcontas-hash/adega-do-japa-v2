@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import { ShoppingBag } from "lucide-react";
 import type { ProductModel } from "@/app/generated/prisma/models";
 import AgeGate from "@/components/AgeGate";
-import BusinessHoursNotice, { useStoreStatus } from "@/components/BusinessHoursNotice";
+import BusinessHoursNotice from "@/components/BusinessHoursNotice";
+import { StoreStatusProvider, useStoreStatus } from "@/components/StoreStatusProvider";
 import CartDrawer from "@/components/CartDrawer";
 import PaymentScreen from "@/components/PaymentScreen";
 import HeaderV2 from "@/components/v2/HeaderV2";
@@ -20,6 +21,14 @@ const CATEGORY_HEADINGS: Record<string, string> = {
 };
 
 export default function StorefrontV2({ products }: { products: ProductModel[] }) {
+  return (
+    <StoreStatusProvider>
+      <StorefrontV2Content products={products} />
+    </StoreStatusProvider>
+  );
+}
+
+function StorefrontV2Content({ products }: { products: ProductModel[] }) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -126,7 +135,7 @@ export default function StorefrontV2({ products }: { products: ProductModel[] })
         <button
           onClick={() => setDrawerOpen(true)}
           aria-label="Abrir carrinho"
-          className="fixed bottom-6 right-6 z-30 flex animate-pulse cursor-pointer items-center justify-center rounded-full bg-orange-500 p-4 text-white shadow-xl hover:bg-orange-600 md:hidden"
+          className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-6 z-30 flex animate-pulse cursor-pointer items-center justify-center rounded-full bg-orange-500 p-4 text-white shadow-xl hover:bg-orange-600 md:hidden"
         >
           <ShoppingBag className="h-6 w-6" />
           <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-red-600 text-[10px] font-black text-white shadow-sm">

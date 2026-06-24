@@ -6,14 +6,20 @@ import { isStoreOpen } from "@/lib/business-hours";
 import { getDeliveryFee } from "@/lib/delivery";
 
 const checkoutSchema = z.object({
-  customerName: z.string().min(1),
-  phone: z.string().min(8),
-  cep: z.string().optional(),
-  neighborhood: z.string().optional(),
-  address: z.string().min(1),
+  customerName: z.string().trim().min(2).max(120),
+  phone: z
+    .string()
+    .trim()
+    .min(8)
+    .max(20)
+    .regex(/^[\d\s()+-]+$/, "Telefone inválido"),
+  cep: z.string().trim().optional(),
+  neighborhood: z.string().trim().optional(),
+  address: z.string().trim().min(1).max(300),
   items: z
-    .array(z.object({ productId: z.string().min(1), quantity: z.number().int().positive() }))
-    .min(1),
+    .array(z.object({ productId: z.string().min(1), quantity: z.number().int().positive().max(99) }))
+    .min(1)
+    .max(50),
 });
 
 export async function POST(request: Request) {
@@ -21,7 +27,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Fora do horário de funcionamento." }, { status: 409 });
   }
 
-  const parsed = checkoutSchema.safeParse(await request.json());
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Requisição inválida." }, { status: 400 });
+  }
+
+  const parsed = checkoutSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Dados do pedido inválidos." }, { status: 400 });
   }

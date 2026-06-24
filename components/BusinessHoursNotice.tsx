@@ -1,34 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-type StoreStatus = { open: boolean; openingHour: number; closingHour: number };
-
-export function useStoreStatus() {
-  const [status, setStatus] = useState<StoreStatus>({ open: true, openingHour: 18, closingHour: 3 });
-
-  useEffect(() => {
-    async function check() {
-      try {
-        const response = await fetch("/api/store-status");
-        if (response.ok) {
-          setStatus(await response.json());
-        }
-      } catch {
-        // mantém o último status conhecido em caso de falha de rede
-      }
-    }
-    check();
-    const interval = setInterval(check, 60_000);
-    return () => clearInterval(interval);
-  }, []);
-
-  return status;
-}
-
-export function useStoreOpen() {
-  return useStoreStatus().open;
-}
+import { useStoreStatus } from "@/components/StoreStatusProvider";
 
 export default function BusinessHoursNotice() {
   const { open, openingHour, closingHour } = useStoreStatus();

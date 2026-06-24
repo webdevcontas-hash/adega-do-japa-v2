@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { CartItem } from "@/lib/types";
 import { getDeliveryFee } from "@/lib/delivery";
-import { useStoreOpen } from "@/components/BusinessHoursNotice";
+import { useStoreOpen } from "@/components/StoreStatusProvider";
 
 function formatPrice(price: number) {
   return price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -50,16 +50,21 @@ export default function CartDrawer({
     if (digits.length !== 8) return;
 
     setCepLoading(true);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
     try {
-      const response = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+      const response = await fetch(`https://viacep.com.br/ws/${digits}/json/`, {
+        signal: controller.signal,
+      });
       const data = await response.json();
       if (!data.erro) {
         setStreet(data.logradouro || "");
         setNeighborhood(data.bairro || "");
       }
     } catch {
-      // CEP inválido ou serviço indisponível: usuário preenche manualmente
+      // CEP inválido, timeout ou serviço indisponível: usuário preenche manualmente
     } finally {
+      clearTimeout(timeout);
       setCepLoading(false);
     }
   }
@@ -109,7 +114,7 @@ export default function CartDrawer({
         className={`absolute inset-0 bg-foreground/50 transition-opacity ${isOpen ? "opacity-100" : "opacity-0"}`}
       />
       <div
-        className={`absolute inset-x-0 bottom-0 max-h-[90vh] overflow-y-auto rounded-t-2xl bg-card p-5 shadow-2xl transition-transform ${
+        className={`absolute inset-x-0 bottom-0 max-h-[90vh] overflow-y-auto rounded-t-2xl bg-card p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl transition-transform ${
           isOpen ? "translate-y-0" : "translate-y-full"
         }`}
       >
@@ -130,14 +135,14 @@ export default function CartDrawer({
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => onChangeQuantity(item.productId, item.quantity - 1)}
-                      className="h-7 w-7 rounded-full bg-accent-light text-accent-dark hover:bg-accent/20"
+                      className="h-9 w-9 rounded-full bg-accent-light text-accent-dark hover:bg-accent/20 md:h-7 md:w-7"
                     >
                       −
                     </button>
                     <span className="w-5 text-center text-sm text-foreground">{item.quantity}</span>
                     <button
                       onClick={() => onChangeQuantity(item.productId, item.quantity + 1)}
-                      className="h-7 w-7 rounded-full bg-accent-light text-accent-dark hover:bg-accent/20"
+                      className="h-9 w-9 rounded-full bg-accent-light text-accent-dark hover:bg-accent/20 md:h-7 md:w-7"
                     >
                       +
                     </button>
@@ -167,14 +172,14 @@ export default function CartDrawer({
                 placeholder="Seu nome"
                 value={customerName}
                 onChange={(event) => setCustomerName(event.target.value)}
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted"
+                className="rounded-lg border border-border bg-background px-3 py-2 text-base md:text-sm text-foreground placeholder:text-muted"
               />
               <input
                 required
                 placeholder="WhatsApp (com DDD)"
                 value={phone}
                 onChange={(event) => setPhone(event.target.value)}
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted"
+                className="rounded-lg border border-border bg-background px-3 py-2 text-base md:text-sm text-foreground placeholder:text-muted"
               />
               <div className="flex gap-2">
                 <input
@@ -183,7 +188,7 @@ export default function CartDrawer({
                   value={cep}
                   onChange={(event) => setCep(event.target.value)}
                   onBlur={handleCepBlur}
-                  className="w-32 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted"
+                  className="w-32 rounded-lg border border-border bg-background px-3 py-2 text-base md:text-sm text-foreground placeholder:text-muted"
                 />
                 {cepLoading && <span className="self-center text-xs text-muted">buscando...</span>}
               </div>
@@ -192,7 +197,7 @@ export default function CartDrawer({
                 placeholder="Rua"
                 value={street}
                 onChange={(event) => setStreet(event.target.value)}
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted"
+                className="rounded-lg border border-border bg-background px-3 py-2 text-base md:text-sm text-foreground placeholder:text-muted"
               />
               <div className="flex gap-2">
                 <input
@@ -200,21 +205,21 @@ export default function CartDrawer({
                   placeholder="Número"
                   value={number}
                   onChange={(event) => setNumber(event.target.value)}
-                  className="w-24 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted"
+                  className="w-24 rounded-lg border border-border bg-background px-3 py-2 text-base md:text-sm text-foreground placeholder:text-muted"
                 />
                 <input
                   required
                   placeholder="Bairro"
                   value={neighborhood}
                   onChange={(event) => setNeighborhood(event.target.value)}
-                  className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted"
+                  className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-base md:text-sm text-foreground placeholder:text-muted"
                 />
               </div>
               <input
                 placeholder="Complemento (opcional)"
                 value={complement}
                 onChange={(event) => setComplement(event.target.value)}
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted"
+                className="rounded-lg border border-border bg-background px-3 py-2 text-base md:text-sm text-foreground placeholder:text-muted"
               />
 
               {!storeOpen && (

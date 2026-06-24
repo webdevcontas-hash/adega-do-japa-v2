@@ -39,3 +39,16 @@ body {
 .font-display {
   font-family: var(--font-grotesk), sans-serif;
 }
+
+/* Respeita usuários que pedem menos movimento (acessibilidade + bateria no mobile).
+   Desliga as animações infinitas (pulse/ping/bounce) e transições longas. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -26,6 +26,7 @@ export default function PaymentScreen({
   const [secondsLeft, setSecondsLeft] = useState(PAYMENT_WINDOW_SECONDS);
   const [status, setStatus] = useState<"PENDING" | "PAID" | "DELIVERED">("PENDING");
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
 
   useEffect(() => {
     const countdown = setInterval(() => {
@@ -37,7 +38,8 @@ export default function PaymentScreen({
   useEffect(() => {
     if (status === "PAID") return;
 
-    const poll = setInterval(async () => {
+    async function tick() {
+      if (document.hidden) return; // não consulta com a aba em segundo plano
       try {
         const response = await fetch(`/api/orders/${orderId}`);
         if (!response.ok) return;
@@ -48,15 +50,44 @@ export default function PaymentScreen({
       } catch {
         // tenta novamente no próximo ciclo
       }
-    }, 4000);
+    }
 
-    return () => clearInterval(poll);
+    const poll = setInterval(tick, 4000);
+    const onVisible = () => {
+      if (!document.hidden) tick();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      clearInterval(poll);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [orderId, status]);
 
   async function copyCode() {
-    await navigator.clipboard.writeText(qrCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopyFailed(false);
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(qrCode);
+      } else {
+        // Fallback para WebViews/contextos sem Clipboard API (comum no mobile)
+        const textarea = document.createElement("textarea");
+        textarea.value = qrCode;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        const ok = document.execCommand("copy");
+        textarea.remove();
+        if (!ok) throw new Error("execCommand falhou");
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Último recurso: expõe o código para o cliente copiar manualmente
+      setCopyFailed(true);
+    }
   }
 
   if (status === "PAID" || status === "DELIVERED") {
@@ -110,6 +141,20 @@ export default function PaymentScreen({
             >
               {copied ? "Código copiado!" : "Copiar código Pix"}
             </button>
+
+            {copyFailed && (
+              <div className="mt-3 text-left">
+                <p className="text-xs text-muted">
+                  Não foi possível copiar automaticamente. Selecione e copie o código abaixo:
+                </p>
+                <textarea
+                  readOnly
+                  value={qrCode}
+                  onFocus={(event) => event.currentTarget.select()}
+                  className="mt-1 h-20 w-full resize-none rounded-lg border border-border bg-background p-2 text-[11px] text-foreground"
+                />
+              </div>
+            )}
           </>
         )}
 

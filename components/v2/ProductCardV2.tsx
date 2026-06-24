@@ -48,7 +48,7 @@ export default function ProductCardV2({
             <button
               onClick={() => onRemoveOne(product)}
               aria-label={`Remover ${product.name}`}
-              className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm transition-transform active:scale-90 hover:bg-slate-50"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm transition-transform active:scale-90 hover:bg-slate-50 md:h-7 md:w-7"
             >
               <Minus className="h-3.5 w-3.5" />
             </button>
@@ -56,7 +56,7 @@ export default function ProductCardV2({
             <button
               onClick={() => onAdd(product)}
               aria-label={`Adicionar ${product.name}`}
-              className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm transition-transform active:scale-90 hover:bg-slate-50"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm transition-transform active:scale-90 hover:bg-slate-50 md:h-7 md:w-7"
             >
               <Plus className="h-3.5 w-3.5" />
             </button>

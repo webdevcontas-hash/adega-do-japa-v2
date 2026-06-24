@@ -31,18 +31,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true });
   }
 
-  const payment = await getPaymentClient().get({ id: dataId });
+  try {
+    const payment = await getPaymentClient().get({ id: dataId });
 
-  if (payment.status === "approved" && payment.external_reference) {
-    const order = await prisma.order.findUnique({
-      where: { id: payment.external_reference },
-      include: { items: { include: { product: true } } },
-    });
+    if (payment.status === "approved" && payment.external_reference) {
+      const order = await prisma.order.findUnique({
+        where: { id: payment.external_reference },
+        include: { items: { include: { product: true } } },
+      });
 
-    if (order && order.status !== "PAID") {
-      await prisma.order.update({ where: { id: order.id }, data: { status: "PAID" } });
-      await notifyOrderPaid(order);
+      if (order && order.status !== "PAID") {
+        await prisma.order.update({ where: { id: order.id }, data: { status: "PAID" } });
+        await notifyOrderPaid(order);
+      }
     }
+  } catch (error) {
+    // Não propaga 500: responde 200 para o Mercado Pago não reenviar em loop por erro nosso.
+    console.error("[webhook] erro ao processar notificação:", error);
   }
 
   return NextResponse.json({ received: true });

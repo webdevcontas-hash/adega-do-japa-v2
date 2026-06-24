@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist_Mono, Plus_Jakarta_Sans, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
@@ -23,6 +23,12 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: "Adega do Japa — Delivery de Bebidas e Tabacaria",
   description: "Peça bebidas e itens de tabacaria com entrega rápida e pagamento via Pix.",
+};
+
+// viewportFit: cover habilita as env(safe-area-inset-*) em iPhones com notch/home indicator.
+export const viewport: Viewport = {
+  themeColor: "#f97316",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
