@@ -20,8 +20,10 @@ export default function HeaderV2({
       {/* Marca */}
       <div className="flex w-full items-center justify-between md:w-auto md:justify-start">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-foreground text-base font-black italic text-accent shadow-md">
-            &amp;
+          <div className="flex h-10 w-[52px] items-center justify-center gap-px rounded-lg bg-foreground shadow-md">
+            <span className="font-display text-[11px] font-black text-white">M</span>
+            <span className="font-display text-[15px] font-black leading-none text-accent">&amp;</span>
+            <span className="font-display text-[11px] font-black text-white">T</span>
           </div>
           <h1 className="font-display text-xl font-black tracking-tight text-foreground md:text-2xl">
             MALTE <span className="text-accent">&amp; TABACO</span>
