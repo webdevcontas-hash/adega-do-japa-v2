@@ -16,6 +16,7 @@ import ProductCardV2 from "@/components/v2/ProductCardV2";
 import ProductDetailV2 from "@/components/v2/ProductDetailV2";
 import KitSection from "@/components/KitSection";
 import NarguilhBuilder from "@/components/NarguilhBuilder";
+import Toast, { type ToastItem } from "@/components/Toast";
 import { useCart, type CheckoutResult } from "@/lib/useCart";
 
 const CATEGORY_HEADINGS: Record<string, string> = {
@@ -43,7 +44,17 @@ function StorefrontV2Content({ products }: { products: ProductModel[] }) {
   const [detailProduct, setDetailProduct] = useState<ProductModel | null>(null);
   const [payment, setPayment] = useState<CheckoutResult | null>(null);
   const [narguilhOpen, setNarguilhOpen] = useState(false);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
   const { cart, itemCount, addToCart, changeQuantity, clear, reorder, addManyToCart } = useCart();
+
+  function showToast(message: string) {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message }]);
+  }
+
+  function removeToast(id: number) {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }
   const { open } = useStoreStatus();
   const { session, profile } = useCustomer();
   const customerName = session?.name ?? profile?.name;
@@ -107,7 +118,11 @@ function StorefrontV2Content({ products }: { products: ProductModel[] }) {
 
           {/* Kits para a ocasião */}
           {!selectedCategory && !searchQuery && (
-            <KitSection onAddKit={(items) => { addManyToCart(items); setDrawerOpen(true); }} />
+            <KitSection onAddKit={(items) => {
+              addManyToCart(items);
+              showToast(`Kit adicionado ao carrinho!`);
+              setDrawerOpen(true);
+            }} />
           )}
 
           {/* Botão Monta seu Narguilé */}
@@ -161,7 +176,7 @@ function StorefrontV2Content({ products }: { products: ProductModel[] }) {
                     key={product.id}
                     product={product}
                     quantityInCart={quantityOf(product.id)}
-                    onAdd={addToCart}
+                    onAdd={(product, qty) => { addToCart(product, qty); showToast(`${product.name.split("—")[0].trim()} adicionado!`); }}
                     onRemoveOne={removeOne}
                     onOpenDetails={setDetailProduct}
                   />
@@ -217,7 +232,12 @@ function StorefrontV2Content({ products }: { products: ProductModel[] }) {
       {narguilhOpen && (
         <NarguilhBuilder
           products={products}
-          onAddToCart={(items) => { addManyToCart(items); setNarguilhOpen(false); setDrawerOpen(true); }}
+          onAddToCart={(items) => {
+            addManyToCart(items);
+            showToast(`${items.length} iten${items.length !== 1 ? "s" : ""} do narguilé adicionado${items.length !== 1 ? "s" : ""}!`);
+            setNarguilhOpen(false);
+            setDrawerOpen(true);
+          }}
           onClose={() => setNarguilhOpen(false)}
         />
       )}
@@ -226,11 +246,13 @@ function StorefrontV2Content({ products }: { products: ProductModel[] }) {
         <ProductDetailV2
           product={detailProduct}
           quantityInCart={quantityOf(detailProduct.id)}
-          onAdd={addToCart}
+          onAdd={(product, qty) => { addToCart(product, qty); showToast(`${product.name.split("—")[0].trim()} adicionado!`); }}
           onRemoveOne={removeOne}
           onClose={() => setDetailProduct(null)}
         />
       )}
+
+      <Toast toasts={toasts} onRemove={removeToast} />
 
       {payment && (
         <PaymentScreen
