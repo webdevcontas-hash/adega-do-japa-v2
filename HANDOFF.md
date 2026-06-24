@@ -1,49 +1,59 @@
 # HANDOFF — Renan Notebook Gordon → próximo agente
 
-> Atualizado: 24/06/2026 08:20 · Renan Notebook Gordon
+> Atualizado: 24/06/2026 15:23 · Renan Notebook Gordon (DELL)
 > **Regra:** quem lê este arquivo apaga o conteúdo anterior e escreve a sua seção ao terminar.
 
 ---
 
 ## O que é este repositório
 
-`adega-do-japa-v2` é a **versão visual V2** (tema **laranja/slate**) do projeto Adega do Japa, criada como **projeto separado** para o cliente comparar com a V1 (repo `adega-do-japa`, tema vermelho) e decidir qual usar. As duas versões têm o **mesmo backend** (catálogo, carrinho, checkout Pix via Mercado Pago, dashboard).
+`adega-do-japa-v2` — MVP de delivery mobile-first para a tabacaria/adega **Malte & Tabaco**.
+Stack: Next.js 16 + TypeScript + Tailwind v4 + Prisma 7 + SQLite + Mercado Pago (Pix).
 
-## O que foi feito nesta sessão (24/06/2026)
+## O que foi feito nesta sessão (24/06/2026 — tarde)
 
-Sessão grande, 3 frentes — tudo commitado e no GitHub (branch `main`):
+Sessão muito grande, tudo commitado e no GitHub (`main`). Commits do dia:
 
-1. **Revisão técnica mobile-first** (commit `00d08ff`): correção de segurança (sessão do dashboard deixou de gravar a senha em texto puro → HMAC), inputs em 16px no mobile (evita zoom iOS), touch targets ~44px, `prefers-reduced-motion`, `error.tsx`/`global-error.tsx`, cópia do Pix com fallback, timeout no ViaCEP, webhook com try/catch, catálogo virou **ISR (`revalidate=60`)**, polling pausa em background, safe-area. Detalhes no PROGRESSO.md.
-2. **Modal de detalhes do produto** (commit `ebcc2f8`): clicar no card abre `ProductDetailV2` (emoji grande, descrição completa, preço, +/- ligado ao carrinho). Botões +/- usam `stopPropagation`.
-3. **Conta do cliente** (commit `d6360c0`): Google (OAuth manual) **+** conta leve no dispositivo (localStorage). Ver CONTEXTO-IA.md (seções "Conta do cliente" e "Variáveis").
+1. **Rebranding completo** para "Malte & Tabaco": nome, paleta (terracota `#b8541d` + cinza claro `#f0eeec`), logo `M&T`, identidade visual da loja.
+2. **Ícones profissionais**: SVGs customizados nos cards de categoria, Font Awesome 6 solid (`react-icons/fa6`) nos cards de produto com gradiente colorido por categoria. Ícones dos kits também atualizados.
+3. **Toast de notificação**: pop-up canto superior direito ao adicionar produto/kit/narguilé ao carrinho.
+4. **Painel Admin completo** (`/admin`): 4 abas — Produtos (CRUD), Kits (CRUD com picker de produto), Taxas de Entrega (CRUD por bairro), Configurações (horário, WhatsApp, taxa padrão, tempo estimado).
+5. **Backend atualizado**: `DeliveryZone` model no banco, taxas de entrega e horário de funcionamento lidos do banco (não mais hardcoded/env), `lib/delivery-db.ts` separado (server-only) para evitar erro `fs` no browser.
+6. **Catálogo real com 51 produtos**: marcas famosas — Brahma, Skol, Heineken, Império, Original, Budweiser, Corona, Stella; JW Red/Black, Jack Daniel's, Absolut, Smirnoff, Gin Tanqueray, Hendrick's, Ballantine's, Saquê Ozeki/Hakutsuru, Cachaça 51/Ypióca, Tequila Jose Cuervo; Zomo (6 sabores), Adalya (4 sabores), Sense (2 sabores), carvão cocoboco, piteira Lavoo, isqueiro Clipper, charuto Dannemann, cigarro Caburé.
+7. **5 kits** atualizados com os novos produtos.
 
-## ⚠️ Pendência crítica para o Google funcionar
+## Acessos
 
-O login com Google está **100% implementado mas inativo** até preencher no `.env`:
-- `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` (criar em https://console.cloud.google.com/apis/credentials, App Web)
-- Redirect URI autorizado: `http://localhost:3501/api/auth/google/callback` (e a URL de produção depois)
-- `SESSION_SECRET` já está preenchido no `.env` local (e documentado no `.env.example`).
+| Painel | URL local | Senha |
+|--------|-----------|-------|
+| Loja | http://localhost:3501 | — |
+| Atendente | http://localhost:3501/dashboard | `adega123` |
+| Admin | http://localhost:3501/admin | `adega123` |
 
-Enquanto não configurar, o botão "Continuar com Google" fica escondido e a rota responde 503 — **a conta leve no dispositivo funciona normalmente**.
+⚠️ Trocar `DASHBOARD_PASSWORD` no `.env` antes de produção.
 
-## Outras pendências (herdadas, backend é igual ao da V1)
+## Pendências críticas
 
-1. Configurar `MERCADOPAGO_ACCESS_TOKEN` real e testar um Pix ponta a ponta (sem ele o checkout dá 502 controlado — esperado).
-2. Trocar `DASHBOARD_PASSWORD` antes de produção.
-3. Integração real de WhatsApp (`lib/whatsapp.ts` hoje só loga).
-4. Definir hospedagem/deploy.
-5. Taxas de entrega por bairro reais (`lib/delivery.ts`).
-6. **Privacidade**: "Meus pedidos" da conta leve busca por telefone — quem digitar o número no mesmo aparelho vê os pedidos. Aceitável p/ MVP; se quiser blindar, exigir login (Google) para ver histórico.
-7. **Dinheiro como `Float`** (não aplicado de propósito): migrar para centavos (`Int`) exige migração + teste de Pix real. Fazer como tarefa dedicada.
-8. Decisão do cliente: V1 (vermelho) × V2 (laranja).
+1. **Mercado Pago**: preencher `MERCADOPAGO_ACCESS_TOKEN` real e testar Pix ponta a ponta.
+2. **Deploy**: definir hospedagem (VPS ou Vercel) e fazer o primeiro deploy.
+3. **Google OAuth**: preencher `GOOGLE_CLIENT_ID/SECRET` no `.env` para ativar login Google.
+4. **WhatsApp real**: integrar `lib/whatsapp.ts` com whatsapp-web.js ou provedor externo.
+5. **Trocar senha** do dashboard antes de produção.
+6. **Taxas de entrega reais**: ajustar bairros e valores no painel Admin → Taxas.
+7. **Horário real**: ajustar abertura/fechamento no painel Admin → Configurações.
+8. **Float → centavos** (migração de preços para Int): tarefa dedicada com teste de Pix real.
 
-## Como rodar
+## Como rodar na nova máquina
 
 ```bash
+git clone https://github.com/webdevcontas-hash/adega-do-japa-v2.git
+cd adega-do-japa-v2
 npm install
+# Copiar o .env da máquina anterior ou criar novo com as variáveis
 npx prisma migrate deploy
 npm run db:seed
 npm run dev -- --port 3501
 ```
 
-`.env` local já existe (gitignored, com SESSION_SECRET). Servidor de dev costuma ficar na porta 3501; se der `EADDRINUSE`, mate o processo node que está na porta antes de subir de novo.
+O `.env` contém: `DATABASE_URL`, `SESSION_SECRET`, `DASHBOARD_PASSWORD` e demais vars.
+O banco SQLite (`dev.db`) **não é versionado** — rodar o seed sempre que clonar.
