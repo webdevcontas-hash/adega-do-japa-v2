@@ -1,0 +1,137 @@
+import { CATEGORIES } from "@/lib/types";
+
+type HubCard = {
+  id: string;
+  title: string;
+  sub: string;
+  badge: string;
+  emoji: string;
+  colorClass: string;
+  activeRing: string;
+  textColor: string;
+  emojiBg: string;
+  rotate: string;
+};
+
+const HUB_CARDS: HubCard[] = [
+  {
+    id: "Cervejas",
+    title: "CERVEJAS GELADAS",
+    sub: "Pilsen, IPA e Long Necks",
+    badge: "Trinca",
+    emoji: "🍺",
+    colorClass: "bg-amber-500 shadow-amber-200/50 hover:bg-amber-600",
+    activeRing: "ring-4 ring-amber-500 ring-offset-4 ring-offset-orange-50",
+    textColor: "text-amber-50",
+    emojiBg: "bg-white text-amber-600",
+    rotate: "rotate-12 group-hover:rotate-0",
+  },
+  {
+    id: "Destilados",
+    title: "DESTILADOS PREMIUM",
+    sub: "Whisky, Gin e Vodka",
+    badge: "Cheers",
+    emoji: "🥃",
+    colorClass: "bg-purple-800 shadow-purple-200/50 hover:bg-purple-900",
+    activeRing: "ring-4 ring-purple-700 ring-offset-4 ring-offset-orange-50",
+    textColor: "text-purple-100",
+    emojiBg: "bg-amber-400 text-purple-800",
+    rotate: "-rotate-12 group-hover:rotate-0",
+  },
+  {
+    id: "Tabacaria",
+    title: "TABACARIA SELECT",
+    sub: "Cigarros, Narguilé e Sedas",
+    badge: "Select",
+    emoji: "💨",
+    colorClass: "bg-slate-800 shadow-slate-300/50 hover:bg-slate-900",
+    activeRing: "ring-4 ring-slate-800 ring-offset-4 ring-offset-orange-50",
+    textColor: "text-slate-300",
+    emojiBg: "bg-slate-600 text-white",
+    rotate: "rotate-3 group-hover:rotate-12",
+  },
+  {
+    id: "Combos/Gelo",
+    title: "COMBOS & GELO",
+    sub: "Kits para a galera e gelo",
+    badge: "Festa",
+    emoji: "🧊",
+    colorClass: "bg-red-600 shadow-red-200/50 hover:bg-red-700",
+    activeRing: "ring-4 ring-red-500 ring-offset-4 ring-offset-orange-50",
+    textColor: "text-red-100",
+    emojiBg: "bg-white text-red-600",
+    rotate: "-rotate-6 group-hover:rotate-0",
+  },
+];
+
+export default function CategoryHubV2({
+  selectedCategory,
+  onSelectCategory,
+}: {
+  selectedCategory: string | null;
+  onSelectCategory: (category: string | null) => void;
+}) {
+  // Garante que só renderizamos cards de categorias que existem no catálogo.
+  const cards = HUB_CARDS.filter((card) => (CATEGORIES as readonly string[]).includes(card.id));
+
+  return (
+    <div className="px-4 py-6 md:px-8">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400">Nossos Departamentos</h2>
+        {selectedCategory && (
+          <button
+            onClick={() => onSelectCategory(null)}
+            className="cursor-pointer rounded-full bg-orange-100 px-3 py-1.5 text-xs font-bold text-orange-600 transition-colors hover:bg-orange-200 hover:text-orange-700"
+          >
+            Ver Todos
+          </button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {cards.map((card) => {
+          const isActive = selectedCategory === card.id;
+          const [first, ...rest] = card.title.split(" ");
+          return (
+            <div
+              key={card.id}
+              onClick={() => onSelectCategory(isActive ? null : card.id)}
+              className={`group relative h-48 transform cursor-pointer overflow-hidden rounded-3xl p-6 text-white shadow-xl transition-all duration-300 active:scale-95 ${card.colorClass} ${
+                isActive ? card.activeRing : "hover:-translate-y-1"
+              }`}
+            >
+              <div className="relative z-10 flex h-full flex-col justify-between">
+                <div>
+                  <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-bold uppercase tracking-wider">
+                    {card.badge}
+                  </span>
+                  <h2 className="font-display mt-3 text-2xl font-black leading-tight tracking-tight">
+                    {first}
+                    <br />
+                    {rest.join(" ")}
+                  </h2>
+                </div>
+                <p className={`text-sm font-medium ${card.textColor}`}>{card.sub}</p>
+              </div>
+
+              <div className="absolute -bottom-4 -right-4 h-32 w-32 rounded-full bg-white/10 blur-2xl transition-transform duration-500 group-hover:scale-125" />
+
+              <div className="absolute right-6 top-6">
+                <div className={`flex h-16 w-16 items-center justify-center rounded-2xl shadow-xl transition-transform duration-300 ${card.emojiBg} ${card.rotate}`}>
+                  <span className="select-none text-4xl">{card.emoji}</span>
+                </div>
+              </div>
+
+              {isActive && (
+                <div className="absolute bottom-6 right-6 flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-bold text-slate-900 shadow-lg">
+                  <span className="h-2 w-2 animate-ping rounded-full bg-green-500" />
+                  ATIVADO
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
