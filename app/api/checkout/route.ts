@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getPaymentClient } from "@/lib/mercadopago";
 import { isStoreOpenAsync } from "@/lib/business-hours";
-import { getDeliveryFeeAsync } from "@/lib/delivery";
+import { getDeliveryFeeAsync } from "@/lib/delivery-db";
 
 const checkoutSchema = z.object({
   customerName: z.string().trim().min(2).max(120),
