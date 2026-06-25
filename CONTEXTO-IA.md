@@ -11,8 +11,8 @@ MVP de delivery mobile-first para a tabacaria/adega **Malte & Tabaco**.
 Catálogo: cervejas (marcas famosas), destilados premium, tabacaria (essências Zomo/Adalya/Sense, charutos, narguilé), combos e gelo.
 Checkout via Pix (Mercado Pago). Dashboard do atendente + painel admin completo.
 
-**Pasta local:** `C:\Github\publicados\adega-do-japa-v2\`
-**Repositório:** `https://github.com/webdevcontas-hash/adega-do-japa-v2.git`
+**Pasta local:** `C:\Github\publicados\adega-malte\`
+**Repositório:** `https://github.com/webdevcontas-hash/adega-malte.git`
 
 ---
 
@@ -50,7 +50,7 @@ Gradientes por categoria nos cards de produto: âmbar (Cervejas), pedra (Destila
 ## Estrutura de arquivos relevante
 
 ```
-adega-do-japa-v2/
+adega-malte/
 ├── app/
 │   ├── page.tsx                    # ISR revalidate=60, renderiza StorefrontV2
 │   ├── admin/page.tsx              # Painel admin (força-dynamic, auth)

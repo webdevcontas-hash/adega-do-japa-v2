@@ -7,7 +7,7 @@
 
 ## O que é este repositório
 
-`adega-do-japa-v2` — MVP de delivery mobile-first para a tabacaria/adega **Malte & Tabaco**.
+`adega-malte` — MVP de delivery mobile-first para a tabacaria/adega **Malte & Tabaco**.
 Stack: Next.js 16 + TypeScript + Tailwind v4 + Prisma 7 + SQLite + Mercado Pago (Pix).
 
 ## O que foi feito nesta sessão (24/06/2026 — tarde)
@@ -57,8 +57,8 @@ Análise de produto feita em 24/06 tarde. **Começar por M2 → M1** (maior reto
 ## Como rodar na nova máquina
 
 ```bash
-git clone https://github.com/webdevcontas-hash/adega-do-japa-v2.git
-cd adega-do-japa-v2
+git clone https://github.com/webdevcontas-hash/adega-malte.git
+cd adega-malte
 npm install
 # Copiar o .env da máquina anterior ou criar novo com as variáveis
 npx prisma migrate deploy
