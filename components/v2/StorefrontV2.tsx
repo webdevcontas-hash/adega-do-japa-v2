@@ -260,6 +260,8 @@ function StorefrontV2Content({ products }: { products: ProductModel[] }) {
           qrCode={payment.qrCode}
           qrCodeBase64={payment.qrCodeBase64}
           total={payment.total}
+          paymentMethod={payment.paymentMethod}
+          changeFor={payment.changeFor}
           onClose={() => setPayment(null)}
         />
       )}

@@ -12,11 +12,26 @@ type Order = {
   total: number;
   couponCode: string | null;
   couponDiscount: number | null;
+  paymentMethod: "pix" | "card" | "cash";
+  changeFor: number | null;
   status: "PENDING" | "PAID" | "DELIVERED";
   deliveryStatus: DeliveryStatus;
   accepted: boolean;
   items: OrderItem[];
 };
+
+const PAYMENT_LABEL: Record<Order["paymentMethod"], string> = {
+  pix: "⚡ Pix (pago)",
+  card: "💳 Cartão na entrega",
+  cash: "💵 Dinheiro na entrega",
+};
+
+/** Pedido novo aguardando o atendente: Pix já pago, ou pagamento na entrega recém-confirmado. */
+function needsAttention(order: Order): boolean {
+  if (order.accepted) return false;
+  if (order.paymentMethod === "pix") return order.status === "PAID";
+  return order.status === "PENDING";
+}
 type Coupon = {
   id: number;
   code: string;
@@ -104,7 +119,7 @@ export default function DashboardPanel() {
     }
   }, [activeTab]);
 
-  const pendingAlarm = orders.some((order) => order.status === "PAID" && !order.accepted);
+  const pendingAlarm = orders.some(needsAttention);
 
   useEffect(() => {
     if (pendingAlarm && !alarmIntervalRef.current) {
@@ -218,13 +233,14 @@ export default function DashboardPanel() {
         {activeTab === "orders" && (
           <ul className="flex flex-col gap-3">
             {orders.map((order) => {
-              const needsAttention = order.status === "PAID" && !order.accepted;
+              const attention = needsAttention(order);
               const currentStepIndex = DELIVERY_STEPS.findIndex((s) => s.key === order.deliveryStatus);
+              const showStepper = order.accepted && (order.status === "PAID" || order.status === "DELIVERED" || order.paymentMethod !== "pix");
               return (
                 <li
                   key={order.id}
                   className={`rounded-xl border p-4 shadow-sm ${
-                    needsAttention ? "animate-pulse border-accent bg-accent-light" : "border-border bg-card"
+                    attention ? "animate-pulse border-accent bg-accent-light" : "border-border bg-card"
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -261,7 +277,23 @@ export default function DashboardPanel() {
                     )}
                   </p>
 
-                  {needsAttention && (
+                  {/* Forma de pagamento */}
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                        order.paymentMethod === "pix" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800"
+                      }`}
+                    >
+                      {PAYMENT_LABEL[order.paymentMethod]}
+                    </span>
+                    {order.paymentMethod === "cash" && order.changeFor && order.changeFor > order.total && (
+                      <span className="text-xs font-semibold text-amber-800">
+                        Troco p/ {formatPrice(order.changeFor)} → levar {formatPrice(order.changeFor - order.total)}
+                      </span>
+                    )}
+                  </div>
+
+                  {attention && (
                     <button
                       onClick={() => acceptOrder(order.id)}
                       className="mt-3 w-full rounded-lg bg-accent py-2 font-semibold text-white transition hover:bg-accent-dark"
@@ -270,7 +302,7 @@ export default function DashboardPanel() {
                     </button>
                   )}
 
-                  {order.accepted && order.status === "PAID" && (
+                  {showStepper && (
                     <div className="mt-3">
                       <p className="mb-2 text-xs font-bold uppercase text-muted tracking-wide">Status de entrega</p>
                       <div className="flex gap-1 flex-wrap">

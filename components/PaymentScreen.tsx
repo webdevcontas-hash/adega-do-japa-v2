@@ -2,8 +2,13 @@
 
 import { useEffect, useState } from "react";
 import type { DeliveryStatus } from "@/lib/types";
+import type { PaymentMethod } from "@/lib/useCart";
 
 const PAYMENT_WINDOW_SECONDS = 10 * 60;
+
+function formatBRL(value: number) {
+  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
 
 type OrderStatus = "PENDING" | "PAID" | "DELIVERED";
 
@@ -25,12 +30,16 @@ export default function PaymentScreen({
   qrCode,
   qrCodeBase64,
   total,
+  paymentMethod = "pix",
+  changeFor,
   onClose,
 }: {
   orderId: string;
-  qrCode: string;
-  qrCodeBase64: string;
+  qrCode?: string;
+  qrCodeBase64?: string;
   total: number;
+  paymentMethod?: PaymentMethod;
+  changeFor?: number;
   onClose: () => void;
 }) {
   const [secondsLeft, setSecondsLeft] = useState(PAYMENT_WINDOW_SECONDS);
@@ -79,10 +88,10 @@ export default function PaymentScreen({
     setCopyFailed(false);
     try {
       if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(qrCode);
+        await navigator.clipboard.writeText(qrCode ?? "");
       } else {
         const textarea = document.createElement("textarea");
-        textarea.value = qrCode;
+        textarea.value = qrCode ?? "";
         textarea.style.position = "fixed";
         textarea.style.opacity = "0";
         document.body.appendChild(textarea);
@@ -100,6 +109,67 @@ export default function PaymentScreen({
   }
 
   const currentStepIndex = DELIVERY_STEPS.findIndex((step) => step.key === deliveryStatus);
+
+  // Pagamento na entrega: pedido já confirmado, sem QR Code. Mostra recibo + rastreamento.
+  if (paymentMethod !== "pix") {
+    const isDelivered = deliveryStatus === "DELIVERED";
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/60 p-4">
+        <div className="w-full max-w-sm rounded-2xl bg-card p-6 text-foreground shadow-2xl">
+          <div className="text-center">
+            <div className="text-5xl">{isDelivered ? "✅" : "🎉"}</div>
+            <h2 className="mt-3 text-xl font-bold">Pedido confirmado!</h2>
+            <p className="mt-2 text-sm font-semibold text-accent-dark">
+              {paymentMethod === "cash" ? "💵 Pague em dinheiro na entrega" : "💳 Pague no cartão na entrega"}
+            </p>
+            <p className="mt-1 text-2xl font-bold text-foreground">{formatBRL(total)}</p>
+            {paymentMethod === "cash" && changeFor && changeFor > total && (
+              <p className="mt-1 text-xs text-muted">
+                Troco para {formatBRL(changeFor)} (levaremos {formatBRL(changeFor - total)})
+              </p>
+            )}
+          </div>
+
+          <div className="mt-6 space-y-3">
+            {DELIVERY_STEPS.map((step, index) => {
+              const isDone = index <= currentStepIndex;
+              const isCurrent = index === currentStepIndex;
+              return (
+                <div key={step.key} className="flex items-center gap-3">
+                  <div
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg transition-all ${
+                      isDone ? "bg-accent text-white shadow-md" : "bg-slate-100 text-slate-400"
+                    } ${isCurrent ? "ring-2 ring-accent ring-offset-2" : ""}`}
+                  >
+                    {step.emoji}
+                  </div>
+                  <div className="flex-1">
+                    <p className={`text-sm font-semibold ${isDone ? "text-foreground" : "text-muted"}`}>{step.label}</p>
+                    {isCurrent && !isDelivered && <p className="text-xs text-accent-dark">Em andamento...</p>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {isDelivered ? (
+            <button onClick={onClose} className="mt-6 w-full rounded-lg bg-accent py-3 font-semibold text-white hover:bg-accent-dark">
+              Fechar
+            </button>
+          ) : (
+            <>
+              <p className="mt-5 text-center text-xs text-muted">
+                Esta tela atualiza automaticamente. Pode minimizar o app. 😊
+              </p>
+              <button onClick={onClose} className="mt-3 w-full py-2 text-sm text-muted hover:text-foreground">
+                Fechar
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (status === "PAID" || status === "DELIVERED") {
     return (
@@ -199,7 +269,7 @@ export default function PaymentScreen({
                 </p>
                 <textarea
                   readOnly
-                  value={qrCode}
+                  value={qrCode ?? ""}
                   onFocus={(e) => e.currentTarget.select()}
                   className="mt-1 h-20 w-full resize-none rounded-lg border border-border bg-background p-2 text-[11px] text-foreground"
                 />

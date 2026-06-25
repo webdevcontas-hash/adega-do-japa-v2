@@ -31,10 +31,12 @@ export async function POST(
     return NextResponse.json({ error: "Pedido não encontrado." }, { status: 404 });
   }
 
+  // Ao entregar, conclui a venda: garante status DELIVERED (essencial para pedidos
+  // "paga na entrega", que entram como PENDING e só viram venda no recebimento).
   const updated = await prisma.order.update({
     where: { id },
-    data: { deliveryStatus },
-    select: { id: true, deliveryStatus: true },
+    data: { deliveryStatus, ...(deliveryStatus === "DELIVERED" ? { status: "DELIVERED" } : {}) },
+    select: { id: true, deliveryStatus: true, status: true },
   });
 
   return NextResponse.json(updated);

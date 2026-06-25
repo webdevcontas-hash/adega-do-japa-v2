@@ -34,6 +34,8 @@ model Order {
   total          Float
   couponCode     String?
   couponDiscount Float?
+  paymentMethod  String      @default("pix")   // "pix" | "card" (cartão na entrega) | "cash" (dinheiro na entrega)
+  changeFor      Float?      // troco para (apenas dinheiro)
   status         String      @default("PENDING")
   deliveryStatus String      @default("WAITING")
   accepted       Boolean     @default(false)

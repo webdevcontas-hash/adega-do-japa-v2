@@ -4,11 +4,15 @@ import { useState } from "react";
 import type { ProductModel } from "@/app/generated/prisma/models";
 import type { CartItem } from "@/lib/types";
 
+export type PaymentMethod = "pix" | "card" | "cash";
+
 export type CheckoutResult = {
   orderId: string;
   total: number;
-  qrCode: string;
-  qrCodeBase64: string;
+  paymentMethod?: PaymentMethod;
+  changeFor?: number;
+  qrCode?: string;
+  qrCodeBase64?: string;
 };
 
 /**

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { CartItem } from "@/lib/types";
+import type { CheckoutResult, PaymentMethod } from "@/lib/useCart";
 import { getDeliveryFee } from "@/lib/delivery";
 import { useStoreStatus } from "@/components/StoreStatusProvider";
 import { useCustomer } from "@/components/CustomerProvider";
@@ -10,12 +11,11 @@ function formatPrice(price: number) {
   return price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-type CheckoutResult = {
-  orderId: string;
-  total: number;
-  qrCode: string;
-  qrCodeBase64: string;
-};
+const PAYMENT_OPTIONS: { id: PaymentMethod; label: string; hint: string; icon: string }[] = [
+  { id: "pix", label: "Pix", hint: "Pague agora pelo QR Code", icon: "⚡" },
+  { id: "card", label: "Cartão na entrega", hint: "Maquininha no recebimento", icon: "💳" },
+  { id: "cash", label: "Dinheiro", hint: "Pague em espécie na entrega", icon: "💵" },
+];
 
 export default function CartDrawer({
   isOpen,
@@ -40,6 +40,10 @@ export default function CartDrawer({
   const [cepLoading, setCepLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  // Forma de pagamento
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("pix");
+  const [changeFor, setChangeFor] = useState("");
 
   // Cupom
   const [couponInput, setCouponInput] = useState("");
@@ -134,6 +138,13 @@ export default function CartDrawer({
     setError("");
     setSubmitting(true);
 
+    const changeForValue = paymentMethod === "cash" && changeFor.trim() ? Number(changeFor.replace(",", ".")) : undefined;
+    if (changeForValue !== undefined && (Number.isNaN(changeForValue) || changeForValue < total)) {
+      setError(`O troco deve ser maior ou igual ao total (${formatPrice(total)}).`);
+      setSubmitting(false);
+      return;
+    }
+
     const address = `${street}, ${number}${complement ? ` - ${complement}` : ""} - ${neighborhood}`;
     saveProfile({ name: customerName, phone, cep, street, number, neighborhood, complement });
 
@@ -149,6 +160,8 @@ export default function CartDrawer({
           neighborhood,
           address,
           couponCode: couponCode || undefined,
+          paymentMethod,
+          changeFor: changeForValue,
           items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
         }),
       });
@@ -327,6 +340,48 @@ export default function CartDrawer({
                 className="rounded-lg border border-border bg-background px-3 py-2 text-base md:text-sm text-foreground placeholder:text-muted"
               />
 
+              {/* Forma de pagamento */}
+              <div className="mt-1">
+                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted">Forma de pagamento</p>
+                <div className="flex flex-col gap-2">
+                  {PAYMENT_OPTIONS.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => setPaymentMethod(option.id)}
+                      className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition ${
+                        paymentMethod === option.id
+                          ? "border-accent bg-accent-light"
+                          : "border-border bg-background hover:border-accent/50"
+                      }`}
+                    >
+                      <span className="text-xl">{option.icon}</span>
+                      <span className="flex-1">
+                        <span className="block text-sm font-semibold text-foreground">{option.label}</span>
+                        <span className="block text-xs text-muted">{option.hint}</span>
+                      </span>
+                      <span
+                        className={`h-4 w-4 shrink-0 rounded-full border-2 ${
+                          paymentMethod === option.id ? "border-accent bg-accent" : "border-border"
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+
+                {paymentMethod === "cash" && (
+                  <div className="mt-2">
+                    <input
+                      inputMode="decimal"
+                      placeholder="Precisa de troco? Troco para quanto? (opcional)"
+                      value={changeFor}
+                      onChange={(e) => setChangeFor(e.target.value)}
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-base md:text-sm text-foreground placeholder:text-muted"
+                    />
+                  </div>
+                )}
+              </div>
+
               {!storeOpen && (
                 <p className="text-center text-sm text-red-600">
                   Estamos fora do horário de funcionamento. Volte mais tarde para finalizar o pedido.
@@ -339,7 +394,11 @@ export default function CartDrawer({
                 disabled={submitting || !storeOpen}
                 className="mt-2 rounded-lg bg-accent py-3 font-semibold text-white transition hover:bg-accent-dark disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {submitting ? "Gerando Pix..." : "Confirmar e Pagar com Pix"}
+                {submitting
+                  ? (paymentMethod === "pix" ? "Gerando Pix..." : "Confirmando...")
+                  : paymentMethod === "pix"
+                  ? "Confirmar e Pagar com Pix"
+                  : "Confirmar pedido"}
               </button>
             </form>
           </>

@@ -18,6 +18,8 @@ const checkoutSchema = z.object({
   neighborhood: z.string().trim().optional(),
   address: z.string().trim().min(1).max(300),
   couponCode: z.string().trim().toUpperCase().optional(),
+  paymentMethod: z.enum(["pix", "card", "cash"]).default("pix"),
+  changeFor: z.number().positive().max(100000).optional(),
   items: z
     .array(z.object({ productId: z.string().min(1), quantity: z.number().int().positive().max(99) }))
     .min(1)
@@ -41,7 +43,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Dados do pedido inválidos." }, { status: 400 });
   }
 
-  const { customerName, phone, email, cep, neighborhood, address, couponCode, items } = parsed.data;
+  const { customerName, phone, email, cep, neighborhood, address, couponCode, paymentMethod, changeFor, items } = parsed.data;
 
   const products = await prisma.product.findMany({
     where: { id: { in: items.map((item) => item.productId) }, isAvailable: true },
@@ -86,6 +88,8 @@ export async function POST(request: Request) {
       total,
       couponCode: validatedCouponCode,
       couponDiscount: couponDiscount > 0 ? couponDiscount : null,
+      paymentMethod,
+      changeFor: paymentMethod === "cash" ? changeFor ?? null : null,
       status: "PENDING",
       items: { create: orderItems },
     },
@@ -97,6 +101,11 @@ export async function POST(request: Request) {
       where: { code: validatedCouponCode },
       data: { usedCount: { increment: 1 } },
     });
+  }
+
+  // Pagamento na entrega (dinheiro/cartão): pedido confirmado sem Pix/Mercado Pago.
+  if (paymentMethod !== "pix") {
+    return NextResponse.json({ orderId: order.id, total, paymentMethod, changeFor: order.changeFor ?? undefined });
   }
 
   try {
