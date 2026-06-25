@@ -456,10 +456,156 @@ function ConfigTab() {
   );
 }
 
+// ─── Relatórios Tab ───────────────────────────────────────────────────────────
+
+type Range = "today" | "7d" | "30d" | "all";
+type ReportData = {
+  totalRevenue: number;
+  orderCount: number;
+  avgTicket: number;
+  topProducts: { name: string; quantity: number; revenue: number }[];
+  ordersByHour: { hour: number; count: number; revenue: number }[];
+  daily: { date: string; count: number; revenue: number }[];
+};
+
+const RANGES: { id: Range; label: string }[] = [
+  { id: "today", label: "Hoje" },
+  { id: "7d", label: "7 dias" },
+  { id: "30d", label: "30 dias" },
+  { id: "all", label: "Tudo" },
+];
+
+function StatCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-4">
+      <p className="text-xs font-bold uppercase tracking-wide text-muted">{label}</p>
+      <p className="mt-1 text-2xl font-extrabold text-foreground">{value}</p>
+      {hint && <p className="text-xs text-muted">{hint}</p>}
+    </div>
+  );
+}
+
+function RelatoriosTab() {
+  const [range, setRange] = useState<Range>("30d");
+  const [data, setData] = useState<ReportData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch(`/api/admin/reports?range=${range}`);
+    if (res.ok) setData(await res.json());
+    setLoading(false);
+  }, [range]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const maxHour = data ? Math.max(1, ...data.ordersByHour.map((h) => h.count)) : 1;
+  const maxDaily = data ? Math.max(1, ...data.daily.map((d) => d.revenue)) : 1;
+  const peakProductQty = data?.topProducts[0]?.quantity ?? 1;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-lg font-bold text-foreground">Relatório de Vendas</h2>
+        <div className="flex gap-1">
+          {RANGES.map((r) => (
+            <button key={r.id} onClick={() => setRange(r.id)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${range === r.id ? "bg-accent text-white" : "border border-border text-muted hover:bg-accent-light hover:text-foreground"}`}>
+              {r.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {loading && <p className="text-sm text-muted">Carregando...</p>}
+
+      {!loading && data && (
+        <>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <StatCard label="Total vendido" value={fmt(data.totalRevenue)} hint="Pedidos pagos e entregues" />
+            <StatCard label="Pedidos" value={String(data.orderCount)} />
+            <StatCard label="Ticket médio" value={fmt(data.avgTicket)} />
+          </div>
+
+          {data.orderCount === 0 && (
+            <p className="rounded-xl border border-border bg-card p-6 text-center text-sm text-muted">
+              Nenhuma venda registrada neste período.
+            </p>
+          )}
+
+          {data.orderCount > 0 && (
+            <>
+              {/* Mais vendidos */}
+              <section className="rounded-xl border border-border bg-card p-5">
+                <h3 className="mb-3 font-bold text-foreground">Mais vendidos</h3>
+                <div className="space-y-2.5">
+                  {data.topProducts.map((p, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <span className="w-5 shrink-0 text-right text-xs font-bold text-muted">{i + 1}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="truncate text-sm font-semibold text-foreground">{p.name.split("—")[0].trim()}</span>
+                          <span className="shrink-0 text-xs text-muted">{p.quantity}× · {fmt(p.revenue)}</span>
+                        </div>
+                        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-border">
+                          <div className="h-full rounded-full bg-accent" style={{ width: `${(p.quantity / peakProductQty) * 100}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {/* Pedidos por horário */}
+              <section className="rounded-xl border border-border bg-card p-5">
+                <h3 className="mb-3 font-bold text-foreground">Pedidos por horário</h3>
+                <div className="flex items-end gap-0.5" style={{ height: 120 }}>
+                  {data.ordersByHour.map((h) => (
+                    <div key={h.hour} className="group flex flex-1 flex-col items-center justify-end" title={`${h.hour}h — ${h.count} pedido(s) · ${fmt(h.revenue)}`}>
+                      <div className="w-full rounded-t bg-accent/80 transition group-hover:bg-accent"
+                        style={{ height: `${h.count === 0 ? 2 : (h.count / maxHour) * 100}%`, minHeight: 2 }} />
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-1 flex justify-between text-[10px] text-muted">
+                  <span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>23h</span>
+                </div>
+              </section>
+
+              {/* Receita por dia */}
+              {data.daily.length > 1 && (
+                <section className="rounded-xl border border-border bg-card p-5">
+                  <h3 className="mb-3 font-bold text-foreground">Receita por dia</h3>
+                  <div className="space-y-1.5">
+                    {data.daily.slice(-14).map((d) => {
+                      const [, m, day] = d.date.split("-");
+                      return (
+                        <div key={d.date} className="flex items-center gap-2">
+                          <span className="w-12 shrink-0 text-xs text-muted">{day}/{m}</span>
+                          <div className="h-4 flex-1 overflow-hidden rounded bg-border">
+                            <div className="flex h-full items-center justify-end rounded bg-accent px-1.5" style={{ width: `${Math.max((d.revenue / maxDaily) * 100, 12)}%` }}>
+                              <span className="text-[10px] font-bold text-white whitespace-nowrap">{fmt(d.revenue)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
+            </>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Panel ───────────────────────────────────────────────────────────────
 
-type Tab = "produtos" | "kits" | "taxas" | "configuracoes";
+type Tab = "relatorios" | "produtos" | "kits" | "taxas" | "configuracoes";
 const TABS: { id: Tab; label: string; icon: string }[] = [
+  { id: "relatorios", label: "Relatórios", icon: "📊" },
   { id: "produtos", label: "Produtos", icon: "📦" },
   { id: "kits", label: "Kits", icon: "🎁" },
   { id: "taxas", label: "Taxas de Entrega", icon: "🚚" },
@@ -467,7 +613,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 ];
 
 export default function AdminPanel() {
-  const [tab, setTab] = useState<Tab>("produtos");
+  const [tab, setTab] = useState<Tab>("relatorios");
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -493,6 +639,7 @@ export default function AdminPanel() {
       </div>
 
       <div className="mx-auto max-w-4xl px-4 py-6">
+        {tab === "relatorios" && <RelatoriosTab />}
         {tab === "produtos" && <ProdutosTab />}
         {tab === "kits" && <KitsTab />}
         {tab === "taxas" && <TaxasTab />}
