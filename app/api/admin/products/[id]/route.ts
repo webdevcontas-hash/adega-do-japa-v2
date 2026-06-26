@@ -11,6 +11,8 @@ const patchSchema = z.object({
   description: z.string().trim().max(500).nullable().optional(),
   isAvailable: z.boolean().optional(),
   stock: z.number().int().min(0).nullable().optional(),
+  image: z.string().trim().max(500).nullable().optional(),
+  icon: z.string().trim().max(50).nullable().optional(),
 });
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {

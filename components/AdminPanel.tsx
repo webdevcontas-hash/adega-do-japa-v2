@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import type { IconType } from "react-icons";
 import {
   FaPlus, FaTrash, FaPen, FaCheck, FaXmark, FaToggleOn, FaToggleOff,
-  FaChartSimple, FaBox, FaGift, FaTruck, FaGear, FaClock, FaWhatsapp,
+  FaChartSimple, FaBox, FaGift, FaTruck, FaGear, FaClock, FaWhatsapp, FaUpload,
 } from "react-icons/fa6";
+import ProductIcon, { ICON_OPTIONS } from "@/components/v2/icons/ProductIcon";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type Product = { id: string; name: string; price: number; category: string; description: string | null; isAvailable: boolean; stock: number | null };
+type Product = { id: string; name: string; price: number; category: string; description: string | null; isAvailable: boolean; stock: number | null; image: string | null; icon: string | null };
 type KitItem = { productId: string; quantity: number };
 type Kit = { id: number; name: string; description: string | null; items: KitItem[]; active: boolean };
 type DeliveryZone = { id: number; neighborhood: string; fee: number };
@@ -51,9 +52,11 @@ function ProdutosTab() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Product | null>(null);
   const [showNew, setShowNew] = useState(false);
-  const [form, setForm] = useState<{ name: string; price: string; category: typeof CATEGORIES[number]; description: string; stock: string }>({ name: "", price: "", category: CATEGORIES[0], description: "", stock: "" });
+  const [form, setForm] = useState<{ name: string; price: string; category: typeof CATEGORIES[number]; description: string; stock: string; image: string; icon: string }>({ name: "", price: "", category: CATEGORIES[0], description: "", stock: "", image: "", icon: "" });
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -66,7 +69,7 @@ function ProdutosTab() {
 
   function openEdit(p: Product) {
     setEditing(p);
-    setForm({ name: p.name, price: String(p.price), category: p.category as typeof CATEGORIES[number], description: p.description ?? "", stock: p.stock == null ? "" : String(p.stock) });
+    setForm({ name: p.name, price: String(p.price), category: p.category as typeof CATEGORIES[number], description: p.description ?? "", stock: p.stock == null ? "" : String(p.stock), image: p.image ?? "", icon: p.icon ?? "" });
     setShowNew(false);
     setError("");
   }
@@ -74,13 +77,27 @@ function ProdutosTab() {
   function openNew() {
     setShowNew(true);
     setEditing(null);
-    setForm({ name: "", price: "", category: CATEGORIES[0], description: "", stock: "" });
+    setForm({ name: "", price: "", category: CATEGORIES[0], description: "", stock: "", image: "", icon: "" });
     setError("");
+  }
+
+  async function uploadImage(file: File) {
+    setUploading(true); setError("");
+    const body = new FormData();
+    body.append("file", file);
+    const res = await fetch("/api/admin/upload", { method: "POST", body });
+    if (res.ok) { const d = await res.json(); setForm((f) => ({ ...f, image: d.url })); }
+    else { const d = await res.json(); setError(d.error ?? "Erro ao enviar imagem."); }
+    setUploading(false);
   }
 
   async function save() {
     setSaving(true); setError("");
-    const body = { name: form.name, price: Number(form.price), category: form.category, description: form.description || null, stock: form.stock.trim() === "" ? null : Number(form.stock) };
+    const body = {
+      name: form.name, price: Number(form.price), category: form.category, description: form.description || null,
+      stock: form.stock.trim() === "" ? null : Number(form.stock),
+      image: form.image.trim() || null, icon: form.icon || null,
+    };
     const url = editing ? `/api/admin/products/${editing.id}` : "/api/admin/products";
     const method = editing ? "PATCH" : "POST";
     const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -128,6 +145,55 @@ function ProdutosTab() {
             <div className="sm:col-span-2"><Input label="Descrição (opcional)" value={form.description} onChange={(v) => setForm((f) => ({ ...f, description: v }))} /></div>
             <Input label="Estoque (vazio = ilimitado)" type="number" min={0} value={form.stock} onChange={(v) => setForm((f) => ({ ...f, stock: v }))} placeholder="Ilimitado" />
           </div>
+
+          <div>
+            <p className="mb-2 text-xs font-bold uppercase text-muted">Imagem do produto (opcional — sem imagem, usa o ícone abaixo)</p>
+            <div className="flex items-center gap-3">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-background">
+                {form.image
+                  ? <img src={form.image} alt="" className="h-full w-full object-cover" />
+                  : <ProductIcon name={form.name || "produto"} category={form.category} icon={form.icon} className="text-2xl text-muted" />}
+              </div>
+              <div className="flex-1 space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    value={form.image} onChange={(e) => setForm((f) => ({ ...f, image: e.target.value }))}
+                    placeholder="Cole a URL de uma imagem..."
+                    className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
+                  />
+                  {form.image && (
+                    <button type="button" onClick={() => setForm((f) => ({ ...f, image: "" }))} className="shrink-0 text-red-400 hover:text-red-600" title="Remover imagem"><FaXmark /></button>
+                  )}
+                </div>
+                <input
+                  ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(f); e.target.value = ""; }}
+                />
+                <Btn variant="ghost" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                  <FaUpload className="inline mr-1" />{uploading ? "Enviando..." : "Enviar arquivo do computador"}
+                </Btn>
+              </div>
+            </div>
+          </div>
+
+          {!form.image && (
+            <div>
+              <p className="mb-2 text-xs font-bold uppercase text-muted">Ícone (usado enquanto não houver imagem)</p>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={() => setForm((f) => ({ ...f, icon: "" }))}
+                  className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${form.icon === "" ? "border-accent bg-accent-light text-accent-dark" : "border-border text-muted hover:bg-background"}`}>
+                  Automático
+                </button>
+                {ICON_OPTIONS.map((opt) => (
+                  <button key={opt.key} type="button" onClick={() => setForm((f) => ({ ...f, icon: opt.key }))} title={opt.label}
+                    className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition ${form.icon === opt.key ? "border-accent bg-accent-light text-accent-dark" : "border-border text-muted hover:bg-background"}`}>
+                    <opt.Icon /> {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {error && <p className="text-xs text-red-500">{error}</p>}
           <div className="flex gap-2">
             <Btn onClick={save} disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Btn>
@@ -144,6 +210,11 @@ function ProdutosTab() {
           <div className="space-y-2">
             {grouped[cat].map((p) => (
               <div key={p.id} className={`flex items-center gap-3 rounded-xl border p-3 ${p.isAvailable ? "border-border bg-card" : "border-border bg-background opacity-50"}`}>
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-background">
+                  {p.image
+                    ? <img src={p.image} alt="" className="h-full w-full object-cover" />
+                    : <ProductIcon name={p.name} category={p.category} icon={p.icon} className="text-lg text-muted" />}
+                </div>
                 <div className="flex-1 min-w-0">
                   <p className="truncate text-sm font-semibold text-foreground">{p.name}</p>
                   <p className="text-xs text-muted">{fmt(p.price)}</p>

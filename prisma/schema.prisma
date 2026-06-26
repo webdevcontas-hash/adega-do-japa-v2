@@ -15,7 +15,8 @@ model Product {
   name        String
   price       Float
   category    String
-  image       String?
+  image       String?     // URL ou caminho local (/uploads/...) da foto do produto; tem prioridade sobre o ícone
+  icon        String?     // chave manual em ICON_OPTIONS (components/v2/icons/ProductIcon.tsx); null = detecta por nome
   description String?
   isAvailable Boolean     @default(true)
   stock       Int?        // null = estoque ilimitado (não controlado); decrementa na venda confirmada

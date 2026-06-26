@@ -15,6 +15,22 @@ import {
 
 type IconProps = { className?: string };
 
+// Conjunto curado de ícones que o admin pode fixar manualmente por produto
+// (Produtos → Editar → Ícone). Mesma família usada na detecção automática abaixo.
+export const ICON_OPTIONS: { key: string; label: string; Icon: IconType }[] = [
+  { key: "beer", label: "Cerveja", Icon: FaBeerMugEmpty },
+  { key: "wine-glass", label: "Copo", Icon: FaWineGlass },
+  { key: "martini", label: "Coquetel", Icon: FaMartiniGlass },
+  { key: "wine-bottle", label: "Garrafa", Icon: FaWineBottle },
+  { key: "smoking", label: "Tabacaria", Icon: FaSmoking },
+  { key: "snowflake", label: "Gelo", Icon: FaSnowflake },
+  { key: "gift", label: "Combo/Kit", Icon: FaGift },
+  { key: "fire", label: "Carvão/Isqueiro", Icon: FaFire },
+  { key: "wind", label: "Narguilé", Icon: FaWind },
+  { key: "bolt", label: "Energético", Icon: FaBolt },
+  { key: "box", label: "Genérico", Icon: FaBox },
+];
+
 const RULES: { keywords: string[]; Icon: IconType }[] = [
   // Carvão e isqueiro → chama (antes de narguilé para não cair em Wind)
   { keywords: ["carvão", "carvao", "isqueiro", "brasa"], Icon: FaFire },
@@ -45,7 +61,11 @@ const CATEGORY_FALLBACK: Record<string, IconType> = {
   "Combos/Gelo": FaGift,
 };
 
-function iconFor(name: string, category: string): IconType {
+function iconFor(name: string, category: string, manualIcon?: string | null): IconType {
+  if (manualIcon) {
+    const picked = ICON_OPTIONS.find((option) => option.key === manualIcon);
+    if (picked) return picked.Icon;
+  }
   const lower = name.toLowerCase();
   for (const rule of RULES) {
     if (rule.keywords.some((kw) => lower.includes(kw))) return rule.Icon;
@@ -56,8 +76,9 @@ function iconFor(name: string, category: string): IconType {
 export default function ProductIcon({
   name,
   category,
+  icon,
   className = "text-[3.5rem]",
-}: IconProps & { name: string; category: string }) {
-  const Icon = iconFor(name, category);
+}: IconProps & { name: string; category: string; icon?: string | null }) {
+  const Icon = iconFor(name, category, icon);
   return <Icon className={className} />;
 }

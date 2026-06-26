@@ -11,6 +11,8 @@
 - **Docs corrigidos**: HANDOFF/PROGRESSO estavam um passo atrás do `git log` — M2 (relatório de vendas) e pagamento na entrega (dinheiro/cartão) já tinham sido implementados em 25/06 de manhã e não estavam documentados.
 - **M3 — Controle de estoque**: `Product.stock` (nullable = ilimitado), validação no checkout, decremento único por pedido (Pix pago ou entrega concluída), badge no admin, produto esgotado some da vitrine. Testado ponta a ponta localmente.
 - **WhatsApp real (M1)**: avaliado, decisão de provedor adiada para próxima sessão.
+- **Ícones do admin/dashboard unificados** com o padrão FA6 sólido já usado na vitrine (categorias/produtos/kits) — trocados os emojis de navegação por ícones reais.
+- **M4 — Foto/ícone do produto no admin**: `Product.image` (upload de arquivo via `/api/admin/upload` OU URL colada) e `Product.icon` (escolha manual entre os ícones já usados na vitrine, sobrepõe a detecção automática por palavra-chave). Imagem tem prioridade sobre ícone. Testado ponta a ponta (upload, validação de tipo/tamanho, renderização no card/modal/admin).
 
 ### Pendências
 
@@ -116,19 +118,19 @@ Sessão longa, diversas frentes — todas commitadas e no GitHub (`main`):
 | M3 | **Controle de estoque** | ✅ Concluído (26/06) | `Product.stock` (null = ilimitado), decremento automático ao confirmar a venda (Pix pago ou entrega concluída), validação no checkout, badge no admin, produto esgotado some da vitrine. |
 
 **Médio impacto — confiança e recompra:**
-| # | Item | Notas de implementação |
-|---|------|------------------------|
-| M4 | **Fotos reais dos produtos** | Schema já tem campo `image`. Adicionar upload no admin. Foto converte mais que ícone, sobretudo em destilados premium. |
-| M5 | **Fidelidade / cashback** | Ex.: "a cada 10 pedidos, 1 frete grátis" ou cashback. A conta do cliente (`CustomerProvider` + Order por phone/email) já é o gancho. Sustenta recompra. |
-| M6 | **Avaliação pós-entrega** | Após `deliveryStatus = DELIVERED`, pedir nota. Gera prova social e feedback pro dono. |
+| # | Item | Estado | Notas de implementação |
+|---|------|--------|------------------------|
+| M4 | **Fotos reais dos produtos** | ✅ Concluído (26/06) | Upload de arquivo (`public/uploads/`) ou URL colada no admin, com escolha manual de ícone como alternativa quando não há foto. Falta só o dono subir as fotos reais dos 51 produtos — a funcionalidade já existe. |
+| M5 | **Fidelidade / cashback** | 🟡 Pendente | Ex.: "a cada 10 pedidos, 1 frete grátis" ou cashback. A conta do cliente (`CustomerProvider` + Order por phone/email) já é o gancho. Sustenta recompra. |
+| M6 | **Avaliação pós-entrega** | 🟡 Pendente | Após `deliveryStatus = DELIVERED`, pedir nota. Gera prova social e feedback pro dono. |
 
 **Técnico — antes de produção:**
-| # | Item | Notas de implementação |
-|---|------|------------------------|
-| M7 | **Float → centavos (Int)** | Evita bug de arredondamento em dinheiro. Migração com cuidado + reteste de Pix. |
-| M8 | **Rate limiting no checkout** | Evitar spam de pedidos e abuso de cupom. |
+| # | Item | Estado | Notas de implementação |
+|---|------|--------|------------------------|
+| M7 | **Float → centavos (Int)** | 🟡 Pendente | Evita bug de arredondamento em dinheiro. Migração com cuidado + reteste de Pix. |
+| M8 | **Rate limiting no checkout** | 🟡 Pendente | Evitar spam de pedidos e abuso de cupom. |
 
-> **Recomendação para retomar:** M2 e M3 concluídos. Próximo: **M1 (WhatsApp real)** — decidir provedor (whatsapp-web.js é o mais simples pra MVP, mas exige processo sempre rodando; Evolution API é mais robusto; API oficial Meta é a única sem risco de banimento, porém com mais burocracia). Depois **M4 (fotos reais)**.
+> **Recomendação para retomar:** M2, M3 e M4 concluídos. Próximo: **M1 (WhatsApp real)** — decidir provedor (whatsapp-web.js é o mais simples pra MVP, mas exige processo sempre rodando; Evolution API é mais robusto; API oficial Meta é a única sem risco de banimento, porém com mais burocracia). Depois M5/M6 (fidelidade, avaliação pós-entrega).
 
 ---
 
@@ -140,4 +142,4 @@ Sessão longa, diversas frentes — todas commitadas e no GitHub (`main`):
 | 2 | 24/06/2026 manhã | Renan Notebook Gordon | Mobile-first, modal produto, conta cliente |
 | 3 | 24/06/2026 tarde | Renan Notebook Gordon | Rebranding Malte & Tabaco, ícones FA6, toast, admin completo, 51 produtos reais |
 | 4 | 25/06/2026 manhã | Renan Notebook Gordon | M2 (relatório de vendas), pagamento na entrega (dinheiro/cartão), rename para adega-malte |
-| 5 | 26/06/2026 | sessão IA | Docs atualizados, M3 (controle de estoque) implementado e testado |
+| 5 | 26/06/2026 | sessão IA | Docs atualizados, M3 (estoque) e M4 (foto/ícone do produto) implementados e testados, ícones admin/dashboard unificados |

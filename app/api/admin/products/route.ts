@@ -11,6 +11,8 @@ const productSchema = z.object({
   description: z.string().trim().max(500).optional(),
   isAvailable: z.boolean().default(true),
   stock: z.number().int().min(0).nullable().optional(),
+  image: z.string().trim().max(500).nullable().optional(),
+  icon: z.string().trim().max(50).nullable().optional(),
 });
 
 export async function GET() {

@@ -45,3 +45,6 @@ next-env.d.ts
 /app/generated/prisma
 /dev.db
 /dev.db-journal
+
+# uploads de produto (dados locais, igual ao dev.db)
+/public/uploads

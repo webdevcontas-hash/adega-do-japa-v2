@@ -57,6 +57,7 @@ adega-malte/
 │   ├── dashboard/page.tsx          # Painel atendente (força-dynamic, auth)
 │   └── api/
 │       ├── admin/products/         # CRUD produtos (GET list, POST, PATCH [id], DELETE [id])
+│       ├── admin/upload/           # POST upload de imagem (multipart, salva em public/uploads/)
 │       ├── admin/kits/             # CRUD kits (GET, POST, PATCH [id], DELETE [id])
 │       ├── admin/delivery-zones/   # CRUD zonas de entrega
 │       ├── checkout/route.ts       # Cria Order + Pix (usa isStoreOpenAsync + getDeliveryFeeAsync)
@@ -99,7 +100,8 @@ adega-malte/
 ## Modelos Prisma
 
 ```
-Product       — id(cuid), name, price, category, description?, isAvailable, stock?(null=ilimitado), createdAt
+Product       — id(cuid), name, price, category, description?, isAvailable, stock?(null=ilimitado),
+                image?(URL ou /uploads/...), icon?(chave em ICON_OPTIONS), createdAt
 Order         — id(cuid), customerName, phone, email?, address, neighborhood?, cep?,
                 deliveryFee, total, couponCode?, couponDiscount?, paymentMethod(pix/card/cash), changeFor?,
                 status(PENDING/PAID/DELIVERED), deliveryStatus(WAITING/PREPARING/OUT_FOR_DELIVERY/DELIVERED),
@@ -126,6 +128,7 @@ DeliveryZone  — id(int), neighborhood(unique), fee
 9. **Inputs 16px no mobile**: `text-base md:text-sm` em todos os inputs do checkout (evita zoom iOS).
 10. **Sessões HMAC**: `dashboard-auth.ts` e `customer-auth.ts` gravam HMAC-SHA256 no cookie, nunca o segredo.
 11. **Estoque (`Product.stock`)**: `null` = ilimitado (não controlado), número = quantidade real. `decrementStock()` só roda uma vez por pedido — no webhook do Mercado Pago quando o Pix é aprovado (`status` PENDING→PAID), ou na rota de status quando `deliveryStatus` vira DELIVERED **e o pedido ainda não estava PAID/DELIVERED** (cobre pagamento na entrega, que só conta como venda no recebimento). Checkout valida estoque disponível antes de criar o pedido, mas não reserva — corrida entre dois checkouts simultâneos pode estourar por poucas unidades (aceitável no MVP).
+12. **Imagem/ícone do produto**: `Product.image` (URL externa colada ou `/uploads/...` de upload local via `POST /api/admin/upload`) tem prioridade sobre o ícone — quando presente, `ProductCardV2`/`ProductDetailV2` renderizam `<img>` (não `next/image`, de propósito: URLs arbitrárias coladas pelo admin tornariam o allowlist de domínios do `next/image` inviável de manter). Sem imagem, usa `ProductIcon` com `icon` manual (chave fixa em `ICON_OPTIONS`, ex. `"fire"`) se setado, senão detecta por palavra-chave no nome (mesma lógica de antes). Upload salva em `public/uploads/` (gitignored, dado local — mesmo ciclo de vida do `dev.db`); não sobrevive a deploy serverless (Vercel) sem trocar para storage externo (S3/Cloudinary).
 
 ---
 
